@@ -1,0 +1,19 @@
+Master Confluence feed connection update
+
+Connected in this update:
+- DXY: daily observations from Yahoo Finance chart endpoint (unofficial); also displays the existing XAU/USD-to-DXY 90-day return correlation when the existing correlation endpoint returns it.
+- Macro context: US 10-year Treasury yield (^TNX) daily observations from Yahoo Finance chart endpoint (unofficial).
+- Volume context: estimates signed candle-volume pressure from the latest available candles and provider volume. This is NOT true aggressor-side delta or exchange-reported buy/sell volume.
+- Economic calendar status: checks the existing /api/calendar endpoint. A structured calendar feed requires ECONOMIC_DATA_MODE=live and valid TRADING_ECONOMICS_API_KEY / TRADING_ECONOMICS_API_SECRET credentials; the embedded TradingView widget itself cannot be read by this server-side score.
+
+Not connected:
+- True Level 2 order-book depth. The current free spot XAU/USD source does not provide a consolidated L2 book. This remains explicitly unavailable rather than fabricating institutional liquidity.
+
+Refresh:
+- Price candles refresh every 60 seconds.
+- Macro/correlation/calendar context refreshes every 5 minutes.
+
+Data notes:
+- Yahoo Finance chart endpoint is unofficial and daily, not a streaming feed.
+- Correlation is historical statistical context, not causation or a forecast.
+- Provider candle volume may be tick volume. Estimated candle-volume pressure must not be represented as true footprint delta.

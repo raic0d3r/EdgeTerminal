@@ -1,0 +1,23 @@
+EDGE TERMINAL — FIREBASE ADMIN CONFIGURATION FIX
+
+The Firebase Admin loader now accepts any of these server-side credential sources:
+1. FIREBASE_SERVICE_ACCOUNT_KEY: complete service-account JSON text (recommended for Vercel).
+2. FIREBASE_SERVICE_ACCOUNT_KEY_BASE64: Base64-encoded complete service-account JSON.
+3. GOOGLE_APPLICATION_CREDENTIALS: path to the JSON file, relative to the project root if relative.
+4. Local development fallback: ./firebase-service-account.json.
+
+LOCAL SETUP
+- Put the downloaded Firebase service-account JSON in the project root and name it firebase-service-account.json.
+- Keep it ignored by Git. Do not upload it or commit it.
+- Or set GOOGLE_APPLICATION_CREDENTIALS=./firebase-service-account.json in .env.local.
+- Restart the Next.js development server after changing environment variables.
+
+VERCEL SETUP
+- Open Project Settings > Environment Variables.
+- Add FIREBASE_SERVICE_ACCOUNT_KEY and paste the complete JSON contents as the value, OR add FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 with the Base64-encoded JSON.
+- Add EXNESS_CREDENTIALS_ENCRYPTION_KEY with a unique random secret of at least 32 characters.
+- Apply to the required environments and redeploy.
+- Do not use GOOGLE_APPLICATION_CREDENTIALS with a local path on Vercel unless the file is deliberately included in the deployment (not recommended).
+
+The Firebase service account is server-only. Never use NEXT_PUBLIC_ for these variables.
+This patch fixes credential loading only; it does not establish that Exness API verification succeeds or implement Exness market-data/trading routes.

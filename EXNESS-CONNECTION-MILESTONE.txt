@@ -1,0 +1,24 @@
+EDGE TERMINAL — EXNESS CONNECTION MILESTONE
+
+This milestone adds per-user Exness API onboarding and a server-side connection verification flow.
+
+User setup in Settings > Broker Connections > Exness API:
+- API key identifier
+- private signing key (128-character Exness hex key or Ed25519 PKCS#8 PEM)
+- selected Exness trading account ID
+- Gateway URL copied from the DNS widget in Exness Key Management
+
+The server verifies the key by signing the official GET /v1/trading/access-point request, resolves the account Access Point, and reads GET /v1/configuration/accounts/{account_id}/account. Credentials are encrypted with AES-256-GCM and stored in that signed-in user's Firestore brokerConnections/exness document. The private key is never returned to the browser. Disconnect deletes that user's stored credential document.
+
+Required deployment configuration:
+EXNESS_CREDENTIALS_ENCRYPTION_KEY=<random server-only secret, 32+ characters>
+FIREBASE_SERVICE_ACCOUNT_KEY=<Firebase Admin service account JSON>
+
+IMPORTANT SCOPE:
+This is the credential onboarding + account verification milestone. It does NOT yet route chart candles/live ticks or live order execution through Exness, and it does not change the existing cTrader-only market route. Do not switch the live market provider to Exness until its tick WebSocket, historical candle retrieval, symbol mapping, and account-scoped trading flows have been implemented and tested against a real user-authorized account. No fallback/demo data is used by this milestone.
+
+Security:
+- Do not commit .env.local or service-account JSON.
+- Set a unique strong encryption key in local and production environments.
+- Exness API credentials are per-user; each signed-in user stores their own selected account credentials.
+- Revoke an Exness API key immediately if it is exposed.

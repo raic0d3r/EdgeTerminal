@@ -1,0 +1,19 @@
+Edge Terminal - accumulated Vercel TypeScript fixes
+
+This update includes fixes for the build errors reported in this conversation:
+- app/page.tsx: nullable Firebase auth access uses optional chaining (already present in source).
+- components/auth-gate.tsx: capture Firestore after the initialization guard before using it in the auth callback.
+- components/cot-sentiment-widgets.tsx: narrow widget elements to HTMLIFrameElement before reading contentWindow.
+- components/feature-suggestions.tsx: safely read auth?.currentUser.
+- components/order-flow-footprint.tsx: type the --ofp-zoom CSS custom property explicitly.
+- app/page.tsx: retain one FX_SESSIONS declaration and the live session clock implementation from the prior session-clock update.
+
+Before deployment:
+1. Extract this ZIP over a clean copy of your project (do not overwrite your .env.local).
+2. Run npm.cmd install
+3. Run npm.cmd run build
+4. Only push to GitHub after the local build succeeds.
+
+Do not commit .env.local, Firebase service-account JSON, or any private keys.
+
+A complete production build was not verified in this environment because dependency installation did not finish. This ZIP addresses the listed errors, but further TypeScript/build errors may still be found by the next build.

@@ -1,0 +1,1 @@
+For security, the exported project intentionally excludes firebase-service-account.json and the nested edge_terminal_calibrate.zip. If the service-account credential was previously shared, rotate/revoke it and configure fresh credentials locally. Do not commit service-account keys or .env.local.

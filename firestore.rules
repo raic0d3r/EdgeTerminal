@@ -1,0 +1,45 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated()
+        && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+
+      // Users can read their own profiles.
+      allow read: if isOwner(userId);
+
+      // Allow registration of member accounts.
+      allow create: if isOwner(userId)
+        && request.resource.data.role == 'member'
+        && request.resource.data.status == 'active'
+        // Registration must never grant privileged access.
+        && request.resource.data.access.vipLounge == false
+        && request.resource.data.access.importantVip == false
+        && request.resource.data.keys().hasOnly([
+          'displayName',
+          'email',
+          'role',
+          'status',
+          'access',
+          'createdAt'
+        ]);
+
+      // Prevent users from changing their roles or permissions.
+      allow update, delete: if false;
+    }
+
+    // Deny access to all other collections.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

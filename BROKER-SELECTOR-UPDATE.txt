@@ -1,0 +1,12 @@
+EDGE TERMINAL BROKER SELECTOR UPDATE
+
+Added:
+- Persistent broker selector in the dashboard toolbar: FP Markets cTrader / Exness.
+- Active selection is stored per browser in localStorage.
+- Toolbar market quote requests include the selected provider.
+- Selecting Exness returns an explicit HTTP 501 "adapter not implemented" response; it does not silently fall back to cTrader, BiQuote, iTick, or demo data.
+
+Important:
+This is the broker-selector UI milestone only. The current /api/market route still implements cTrader market data only. Exness live quote/candle retrieval and provider-aware chart data are NOT implemented in this ZIP. Trading order routing is also NOT implemented. Do not use the Exness selection for live trading until those adapters are built and tested. Existing chart and trading functionality remains on its existing path.
+
+No production build was run in this environment.

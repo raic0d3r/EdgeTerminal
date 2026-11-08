@@ -1,0 +1,12 @@
+Edge Terminal - cTrader historical candle fix
+
+Changes:
+- Historical candles now use ProtoOAGetTrendbarsReq count + toTimestamp rather than a short interval-derived fromTimestamp window. This prevents empty M1 history during weekends/market closures when the last N minutes contain no trading bars.
+- Symbol matching accepts broker suffix variants such as XAUUSD.*, XAUUSD_*, and XAUUSD-* while still restricting requests to the requested metal.
+- Empty history errors now include safe response metadata to aid diagnosis without exposing tokens or account credentials.
+- cTrader OAuth connect requests only the `accounts` scope. Trading permission is not needed for market data and is intentionally not requested by this market-data integration.
+
+Notes:
+- Historical candles are still sourced exclusively from cTrader; no provider fallback is added.
+- Candle volume remains broker-reported tick volume, not verified executed trade volume.
+- The project build was not verified in this environment because dependency installation timed out. Run `npm ci` and `npm run build` locally before deploying.

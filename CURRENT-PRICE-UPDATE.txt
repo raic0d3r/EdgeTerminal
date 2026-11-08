@@ -1,0 +1,17 @@
+EDGE TERMINAL — CURRENT PRICE TOOLBAR UPDATE
+
+Updated:
+- app/page.tsx: fetches the selected XAU/USD or XAG/USD quote from the existing /api/market endpoint, refreshes every 15 seconds, and displays price, provider change percentage, source/status.
+- app/globals.css: styles the compact toolbar quote and adds responsive behavior.
+
+Installation:
+1. Back up your existing project.
+2. Extract this ZIP over the project, replacing the included files.
+3. Keep your existing .env.local, firebase-service-account.json, and data/edge-terminal.sqlite* files locally; they are intentionally excluded from this archive. Do not upload or publish those files.
+4. Run npm.cmd run dev and reload the page.
+
+Notes:
+- The display uses the existing /api/market provider adapter; no new provider or API key is added.
+- The quote refreshes every 15 seconds. This is provider polling, not a guaranteed exchange-grade streaming feed.
+- Percentage change is whatever the existing adapter reports (currently compared with the previous candle close where available), not necessarily daily change.
+- If the provider returns no verified quote, the UI shows an unavailable state instead of inventing a price.

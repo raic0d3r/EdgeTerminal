@@ -1,0 +1,10 @@
+BROKER ROUTING UPDATE
+
+- Added a persistent active broker selector (cTrader / Exness) in the main dashboard toolbar.
+- The selection is stored in browser localStorage and is included in market-data requests from the main quote, Footprint, Volume Profile, VWAP, Master Confluence, Master Scorecard, Liquidity Map and Liquidity Heatmap modules.
+- Switching brokers reloads the dashboard so all mounted market modules re-request data under the selected broker.
+- The market API explicitly rejects Exness market-data requests as unavailable until the Exness historical-candle/live-quote adapter is implemented. It never substitutes cTrader prices for Exness.
+- COT, news, calendar and macro/context feeds remain independent external datasets.
+- Candle-derived order-flow values remain estimates, not genuine aggressor-side executed volume.
+
+This is a broker-selection and routing milestone, not a completed Exness market-data adapter or trading execution integration. Verify with npm install and npm run build before deployment.

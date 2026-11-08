@@ -1,0 +1,18 @@
+EDGE TERMINAL - FEATURE ACCESS FIX
+
+This update applies the existing FeatureGate to every dashboard feature module so the admin Feature Access & Pricing settings are respected consistently:
+- Order Flow Footprint
+- Volume Profile & Footprint Analysis
+- Integrated Trade Journal & Analytics
+- Master Confluence & Probability Engine
+- Master Scorecard & Key Levels
+- COT Institutional Sentiment
+- Institutional Liquidity & Book Depth Map
+- Institutional Liquidity Heatmap
+- Volumetric Delta & VWAP Bands
+- Intermarket Correlation Matrix
+- Monetary Policy Watch & Macro Events / Economic Calendar
+
+The module title passed to FeatureGate matches the title used by the admin feature rules. FREE leaves the module open to signed-in members, PRO permits PRO and VIP plans, and VIP is VIP-only. Admin accounts bypass feature locks.
+
+Keep your existing .env.local and credentials when applying this update. The feature gate controls what is shown in the dashboard; public market/calendar data sources themselves are not private APIs.

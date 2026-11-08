@@ -1,0 +1,12 @@
+Edge Terminal — Dynamic module access badges
+
+Changed:
+- Module title badges are loaded from /api/feature-access, using the same feature rules saved in Administration > Feature Access & Pricing.
+- FREE features show no PRO/VIP lock badge.
+- PRO tier (PRO + VIP eligible) shows both blue PRO and gold VIP badges.
+- VIP tier (VIP only) shows only the gold VIP badge.
+- Disabled features do not show plan badges.
+- Saving feature settings dispatches an event so the dashboard refreshes badges immediately; focus/auth changes also refresh them.
+- Institutional Liquidity Heatmap is included in the feature-access definitions so it can be configured in the admin panel.
+
+Keep your existing .env.local and credentials locally; they are not included in this archive.

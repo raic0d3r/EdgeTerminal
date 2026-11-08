@@ -1,0 +1,24 @@
+Edge Terminal — cTrader exclusive candle history patch
+
+Files:
+- lib/ctrader/candles.ts (new)
+- app/api/market/route.ts (replace)
+
+Install:
+1. Stop `npm run dev`.
+2. Extract/merge these folders into the project root.
+3. Keep your existing .env.local unchanged.
+4. Restart `npm run dev`.
+5. Test:
+   http://localhost:3000/api/market?symbol=XAU%2FUSD&interval=5min&provider=ctrader
+   and change symbol to XAG%2FUSD / interval to 1min, 15min, 1h.
+
+When provider=ctrader, the route requests historical trendbars directly from the
+cTrader account and obtains the live spot quote from that same broker.
+It does not call BiQuote or iTick as a fallback. Candle volume is labelled as
+broker-reported tick volume, not executed trade volume.
+
+Scope note: this patch implements direct historical OHLC plus live spot bid/ask.
+It does not yet subscribe to ProtoOALiveTrendbarEvent for streaming in-progress
+candle updates. That is a separate next step; do not interpret spot quote updates
+as executed trades or as verified footprint volume.

@@ -1,0 +1,19 @@
+Edge Terminal Exness market-data update
+
+- /api/market now accepts provider=exness and loads the signed-in user's encrypted Exness credentials.
+- Historical bid/ask candles are requested from the Exness Market Data API.
+- Live bid/ask is obtained from the Exness ticks WebSocket.
+- Exness requests require the signed-in Firebase user's ID token in the Authorization header.
+- Client market-data calls in the dashboard analytics components now attach that token.
+- No cTrader fallback is used when Exness is selected.
+- Candle volume is broker-reported volume, not verified aggressor-side executed volume.
+- Bid/ask ticks are quotes, not executed trades.
+
+Before use:
+1. Configure Firebase Admin credentials and EXNESS_CREDENTIALS_ENCRYPTION_KEY on the server.
+2. Confirm the Exness API key has market-data permissions for the selected account.
+3. Confirm the account is allowed to stream ticks (Exness docs state tick streaming is unavailable when trade_mode is trading_disabled).
+4. Run npm ci and npm run build under the project's supported Node version.
+5. Test XAU/USD and XAG/USD in the connected account.
+
+This environment could not complete npm ci, so a production build has not been verified.
