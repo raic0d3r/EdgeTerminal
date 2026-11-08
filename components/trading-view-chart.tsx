@@ -29,7 +29,7 @@ export default function TradingViewChart({
     hideideas: "1",
     calendar: "0",
     details: "0",
-    hotlist: "0",
+    hotlists: "0",
     news: "0",
     studies: "[]",
   });
