@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     await createOAuthTransaction(uid, state);
     const authorizeUrl = new URL("https://id.ctrader.com/my/settings/openapi/grantingaccess/");
     authorizeUrl.searchParams.set("client_id", clientId); authorizeUrl.searchParams.set("redirect_uri", redirectUri);
-    authorizeUrl.searchParams.set("scope", "accounts trading"); authorizeUrl.searchParams.set("product", "web"); authorizeUrl.searchParams.set("state", state);
+    authorizeUrl.searchParams.set("scope", "trading"); authorizeUrl.searchParams.set("product", "web"); authorizeUrl.searchParams.set("state", state);
     const response = NextResponse.json({ authorizeUrl: authorizeUrl.toString() }, { headers: { "Cache-Control": "no-store" } });
     response.cookies.set("edge_ctrader_oauth_state", state, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/api/ctrader", maxAge: 600 });
     return response;
