@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { ArrowLeft, Plus, X, Lightbulb, LoaderCircle } from "lucide-react";
 import { auth } from "@/lib/firebase";
 
-type Suggestion = { id: number; author: string; title: string; description: string; createdAt: string };
+type Suggestion = { id: string; author: string; title: string; description: string; createdAt: string };
 
 export default function FeatureSuggestions({ onBack }: { onBack: () => void }) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -26,8 +26,18 @@ export default function FeatureSuggestions({ onBack }: { onBack: () => void }) {
       ...(body ? { body: JSON.stringify(body) } : {}),
       cache: "no-store",
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Request failed.");
+    const responseText = await response.text();
+    let data: { error?: string; suggestions?: Suggestion[]; suggestion?: Suggestion } = {};
+    if (responseText.trim()) {
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error(`The server returned an unreadable response (HTTP ${response.status}). Please try again.`);
+      }
+    } else {
+      throw new Error(`The server returned an empty response (HTTP ${response.status}). Please try again.`);
+    }
+    if (!response.ok) throw new Error(data.error || `Request failed (HTTP ${response.status}).`);
     return data;
   }, []);
 

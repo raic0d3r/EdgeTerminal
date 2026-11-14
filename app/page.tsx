@@ -472,7 +472,7 @@ function Dashboard() {
         ))}
       </div>
       <button className={`rail-icon ${toolManagerOpen ? "rail-active" : ""}`} aria-label="Toggle Tool Manager" title="Tool Manager" onClick={() => setToolManagerOpen((v) => !v)}><SlidersHorizontal size={17}/></button>
-      <div className="rail-bottom"><button className="rail-icon" aria-label="Settings" title="Settings" onClick={() => { setSettingsNotice(""); setSettingsOpen(true); void checkExnessStatus(); }}><Settings size={17}/></button><button className="rail-icon" aria-label={lightTheme ? "Switch to dark theme" : "Switch to light theme"} title={lightTheme ? "Switch to dark theme" : "Switch to light theme"} onClick={() => setLightTheme(v => !v)}>{lightTheme ? <Moon size={17}/> : <Sun size={17}/>}</button></div>
+      <div className="rail-bottom"><button className="rail-icon" aria-label="Settings" title="Settings" onClick={() => { setSettingsNotice(""); setSettingsOpen(true); void checkExnessStatus(); }}><Settings size={17}/></button><button className="rail-icon" aria-label={lightTheme ? "Switch to dark theme" : "Switch to light theme"} title={lightTheme ? "Switch to dark theme" : "Switch to light theme"} onClick={() => setLightTheme(v => !v)}>{lightTheme ? <Moon size={17}/> : <Sun size={17}/>}</button><button className="rail-icon" aria-label="Log out" title="Log out" onClick={() => window.dispatchEvent(new Event("edge-terminal-sign-out"))}><LogOut size={17}/></button></div>
     </aside>
 
     {mainSidebarOpen && <aside className="main-sidebar">
@@ -502,7 +502,7 @@ function Dashboard() {
         <ShieldCheck size={18} /> Admin User Management
       </button>
     )}
-		<button className="sidebar-logout" onClick={() => window.dispatchEvent(new Event("edge-terminal-sign-out"))}><LogOut size={18}/> Log Out</button>
+		
         <button className="sidebar-app-card" onClick={() => { setFeatureSuggestionsOpen(false); setActiveChat(null); setWorkspaceEmpty(false); setExpanded(null); }} aria-label="Return to Edge Terminal dashboard">
           <span className="app-card-icon"><BarChart3 size={23}/></span><div><b>Edge Terminal</b><p><span className="live-pill">● PREVIEW</span> Market Terminal</p></div><Activity size={19} className="app-pulse"/>
         </button>
