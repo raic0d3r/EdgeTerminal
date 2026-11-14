@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, getIdToken, type User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { Crown, LockKeyhole, X, Zap, ExternalLink } from "lucide-react";
+import { Crown, X, ExternalLink } from "lucide-react";
 import type { FeatureRule, AccessTier } from "@/lib/feature-access";
 
-type GateResponse = { rules?: FeatureRule[]; plan?: "member" | "pro" | "vip" | "admin" };
+type GateResponse = { rules?: FeatureRule[]; plan?: "member" | "vip" | "admin" };
 
 export default function FeatureGate({ title, children }: { title: string; children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -40,36 +40,33 @@ export default function FeatureGate({ title, children }: { title: string; childr
   }, [title]);
 
   if (!ready) return <div className="feature-gate-loading">Checking membership access…</div>;
-  const tier: AccessTier = rule?.tier || (title === "Order Flow Footprint" ? "VIP" : "PRO");
+  const tier: AccessTier = rule?.tier || "VIP";
   const userPlan = plan || "member";
-  const allowed = userPlan === "admin" || (rule?.enabled !== false && (tier === "FREE" || (tier === "PRO" && (userPlan === "pro" || userPlan === "vip")) || (tier === "VIP" && userPlan === "vip")));
+  const allowed = userPlan === "admin" || (rule?.enabled !== false && (tier === "FREE" || (tier === "VIP" && userPlan === "vip")));
   if (allowed) return <>{children}</>;
 
-  const isVip = tier === "VIP";
   const checkoutUrl = (rule?.subscriptionUrl || "").trim();
-  const planName = isVip ? "VIP" : "PRO";
-  const featureDescription = isVip
-    ? "Unlock the Order Flow Footprint cluster chart, bid/ask imbalance ladders, and absorption signals. VIP also includes Volume Profile and VIP community access."
-    : "Unlock institutional horizontal volume profiles, Point of Control (POC), Value Areas (VAH/VAL), and liquidity zones.";
+  const planName = "VIP";
+  const featureDescription = "Unlock this premium feature, advanced market tools, and VIP community access with one VIP membership.";
 
   return <>
-    <div className={`feature-lock-card ${isVip ? "feature-lock-vip" : "feature-lock-pro"}`}>
-      <div className="feature-lock-icon">{isVip ? <Crown size={31}/> : <LockKeyhole size={31}/>}</div>
+    <div className="feature-lock-card feature-lock-vip">
+      <div className="feature-lock-icon"><Crown size={31}/></div>
       <span className="feature-lock-promo">50% Off Introductory Access</span>
       <h2>{title === "Order Flow Footprint" ? "Order Flow Footprint Cluster Chart is Locked" : `${title} is Locked`}</h2>
       <p>{featureDescription}</p>
       <button className="feature-lock-cta" onClick={() => setCheckoutOpen(true)}>
-        {isVip ? <Crown size={16}/> : <Zap size={16}/>} Unlock {planName} Access {isVip ? "(From £15.99/mo)" : "(From £9.99/mo)"}
+        <Crown size={16}/> Unlock {planName} Access
       </button>
       <small className="feature-lock-note">Cancel or change plans anytime with self-service access.</small>
     </div>
     {checkoutOpen && <div className="checkout-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setCheckoutOpen(false); }}>
-      <section className={`checkout-modal ${isVip ? "vip" : "pro"}`} role="dialog" aria-modal="true" aria-labelledby="checkout-modal-title">
+      <section className="checkout-modal vip" role="dialog" aria-modal="true" aria-labelledby="checkout-modal-title">
         <button className="checkout-modal-close" aria-label="Close checkout dialog" onClick={() => setCheckoutOpen(false)}><X size={19}/></button>
-        <div className="checkout-modal-icon">{isVip ? <Crown size={30}/> : <Zap size={30}/>}</div>
+        <div className="checkout-modal-icon"><Crown size={30}/></div>
         <span className="feature-lock-promo">50% Off Introductory Access</span>
         <h2 id="checkout-modal-title">Unlock {planName} Access</h2>
-        <p>{isVip ? "Get VIP access to this feature and all VIP-only tools and community areas." : "Get PRO access to this feature and all tools included in the PRO plan."}</p>
+        <p>Get VIP access to this feature, all premium tools, and VIP community areas.</p>
         {checkoutUrl ? <a className="feature-lock-cta checkout-link" href={checkoutUrl} target="_blank" rel="noopener noreferrer">Continue to secure checkout <ExternalLink size={15}/></a> : <div className="checkout-no-link">Subscription checkout is not configured yet. Please contact the administrator.</div>}
         <small className="feature-lock-note">You will return here after completing checkout. Access updates when your account plan is updated by the administrator.</small>
       </section>

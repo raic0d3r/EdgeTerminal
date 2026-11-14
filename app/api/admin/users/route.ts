@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
         uid: user.uid,
         email: user.email || "",
         displayName: profile.displayName || user.displayName || user.email?.split("@")[0] || "Member",
-        role: profile.role || "member",
+        role: profile.role === "pro" ? "vip" : profile.role || "member",
         status: profile.status || (user.disabled ? "disabled" : "active"),
         disabled: user.disabled,
         createdAt: user.metadata.creationTime || "",
@@ -79,11 +79,11 @@ export async function PATCH(request: NextRequest) {
     const userRecord = await adminAuth.getUser(uid);
     const current = (await userRef.get()).data() || {};
     if (body.role !== undefined) {
-      if (!["member", "pro", "vip", "admin"].includes(body.role)) return jsonError("Role must be member, pro, vip, or admin.", 400, "INVALID_ROLE");
+      if (!["member", "vip", "admin"].includes(body.role)) return jsonError("Role must be member, vip, or admin.", 400, "INVALID_ROLE");
       if (body.role === "admin") return jsonError("Admin promotion must be performed by a trusted operator.", 403, "ADMIN_PROMOTION_BLOCKED");
     }
     const update: Record<string, unknown> = { updatedAt: FieldValue.serverTimestamp(), updatedBy: actor.uid };
-    if (body.role !== undefined) update.role = body.role;
+    if (body.role !== undefined) update.role = body.role === "pro" ? "vip" : body.role;
     if (body.status !== undefined) {
       if (!["active", "disabled"].includes(body.status)) return jsonError("Invalid account status.", 400, "INVALID_STATUS");
       await adminAuth.updateUser(uid, { disabled: body.status === "disabled" });
@@ -103,7 +103,7 @@ export async function PATCH(request: NextRequest) {
       ...update,
       email: userRecord.email || current.email || "",
       displayName: current.displayName || userRecord.displayName || userRecord.email?.split("@")[0] || "Member",
-      role: body.role ?? current.role ?? "member",
+      role: body.role === "pro" ? "vip" : body.role ?? (current.role === "pro" ? "vip" : current.role) ?? "member",
       status: body.status ?? current.status ?? (userRecord.disabled ? "disabled" : "active")
     }, { merge: true });
     return NextResponse.json({ ok: true });

@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   let rules = defaultFeatureRules();
-  let plan: "member" | "pro" | "vip" | "admin" = "member";
+  let plan: "member" | "vip" | "admin" = "member";
   const authorization = request.headers.get("authorization") || "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
   try {
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       else {
         const profile = (await adminDb.collection("users").doc(decoded.uid).get()).data() || {};
         const role = String(profile.role || profile.plan || "member").toLowerCase();
-        if (role === "vip" || role === "pro") plan = role;
+        if (role === "vip" || role === "pro") plan = "vip";
       }
     }
   } catch {

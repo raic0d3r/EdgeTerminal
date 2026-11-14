@@ -34,20 +34,19 @@ import {
   Newspaper, Settings, ShieldCheck, Sun, Moon, Users, Waves, X, Zap, Calculator, Search, MessageCircle, Download, Lightbulb, LogOut, SlidersHorizontal, CircleHelp, Bot, ArrowUpRight, Sparkles, Copy, Scale
 } from "lucide-react";
 
-type DashboardFeatureRule = { title: string; tier: "FREE" | "PRO" | "VIP"; enabled: boolean; subscriptionUrl?: string };
+type DashboardFeatureRule = { title: string; tier: "FREE" | "VIP"; enabled: boolean; subscriptionUrl?: string };
 
 const modules: { title: string; sub: string; tier: string; icon: any }[] = [
   { title: "Market Intelligence", sub: "Historical pattern matching, market structure and forecast evidence", tier: "FREE", icon: Activity },
-  { title: "Volume Profile & Footprint Analysis", sub: "Session volume distribution, value area and footprint context", tier: "PRO", icon: BarChart3 },
+  { title: "Volume Profile & Footprint Analysis", sub: "Session volume distribution, value area and footprint context", tier: "VIP", icon: BarChart3 },
   { title: "Institutional Liquidity Heatmap", sub: "Visualize liquidity concentrations and price areas", tier: "VIP", icon: Waves },
   { title: "Institutional Liquidity & Book Depth Map", sub: "Explore liquidity zones and available book-depth context", tier: "VIP", icon: Layers3 },
   { title: "Master Scorecard & Key Levels", sub: "Review market structure, scorecards and important levels", tier: "VIP", icon: Gauge },
   { title: "Master Confluence & Probability Engine", sub: "Combine technical context and setup evidence", tier: "VIP", icon: BrainCircuit },
-  { title: "COT Institutional Sentiment", sub: "Commitments of Traders positioning and sentiment context", tier: "PRO", icon: Users },
-  { title: "Volumetric Delta & VWAP Bands", sub: "Review delta estimates, VWAP and related bands", tier: "PRO", icon: Activity },
-  { title: "Intermarket Correlation Matrix", sub: "Compare relationships across related markets", tier: "PRO", icon: Globe2 },
-  { title: "Integrated Trade Journal & Analytics", sub: "Record trades, review execution and analyze performance", tier: "PRO", icon: BookOpen },
-  { title: "Monetary Policy Watch & Macro Events", sub: "Monitor central-bank decisions and economic releases", tier: "FREE", icon: CalendarDays },
+  { title: "COT Institutional Sentiment", sub: "Commitments of Traders positioning and sentiment context", tier: "VIP", icon: Users },
+  { title: "Volumetric Delta & VWAP Bands", sub: "Review delta estimates, VWAP and related bands", tier: "VIP", icon: Activity },
+  { title: "Intermarket Correlation Matrix", sub: "Compare relationships across related markets", tier: "VIP", icon: Globe2 },
+  { title: "Integrated Trade Journal & Analytics", sub: "Record trades, review execution and analyze performance", tier: "VIP", icon: BookOpen },
 ];
 
 
@@ -540,7 +539,7 @@ function Dashboard() {
       </div>
       <div className="main-sidebar-profile">
         <span className="profile-avatar">{avatarUrl ? <img src={avatarUrl} alt="" /> : (displayName.trim()[0] || "U").toUpperCase()}</span><div className="profile-copy"><b>{displayName || username || "Edge User"}</b><small>@{username || "member"}</small></div>
-        <button aria-label={lightTheme ? "Switch to dark theme" : "Switch to light theme"} title={lightTheme ? "Switch to dark theme" : "Switch to light theme"} onClick={()=>setLightTheme(v=>!v)}>{lightTheme ? <Moon size={18}/> : <Sun size={18}/>}</button><button aria-label="Settings" title="Settings" onClick={()=>{setSettingsNotice("");setSettingsOpen(true);void checkExnessStatus();}}><Settings size={18}/></button>
+        <button aria-label="Settings" title="Settings" onClick={()=>{setSettingsNotice("");setSettingsOpen(true);void checkExnessStatus();}}><Settings size={18}/></button>
         <div className="sidebar-legal"><span className="sidebar-built-by">Built for Edge Terminal</span><button type="button" onClick={() => setTermsOpen(true)}>Terms of Use &amp; Legal Disclosures</button></div>
       </div>
     </aside>}
@@ -574,7 +573,7 @@ function Dashboard() {
             </span>
           )}
         </div>
-        <div className="toolbar-right"><button className="pill-btn" onClick={()=>window.open("https://discord.gg/Sda9EvjnwQ","_blank","noopener,noreferrer")}>↗ Join Telegram</button><button className="pill-btn purple" onClick={()=>setAiAnalystOpen(true)}>✦ AI Analyst</button><button className="round-btn" aria-label={lightTheme ? "Switch to dark theme" : "Switch to light theme"} onClick={()=>setLightTheme(v=>!v)}>{lightTheme ? <Moon size={16}/> : <Sun size={16}/>}</button><button className="round-btn" aria-label="Close current workspace" title="Close current workspace" onClick={()=>{setActiveChat(null);setWorkspaceEmpty(true);setAiAnalystOpen(false);setSettingsOpen(false);setChartFullscreen(false);}}><X size={16}/></button></div>
+        <div className="toolbar-right"><button className="round-btn" aria-label="Close current workspace" title="Close current workspace" onClick={()=>{setActiveChat(null);setWorkspaceEmpty(true);setAiAnalystOpen(false);setSettingsOpen(false);setChartFullscreen(false);}}><X size={16}/></button></div>
       </header></>}
 
       <div className={`terminal-content ${activeChat ? "chat-terminal-content" : ""} ${featureSuggestionsOpen ? "feature-suggestions-terminal-content" : ""}`}>
@@ -626,7 +625,6 @@ function Dashboard() {
               <span className="dashboard-orderflow-title">
                 <span>Order Flow Footprint</span>
                 <span className="dashboard-orderflow-tier-badges">
-                  <small className="tier-tag"><LockKeyhole size={9}/> PRO</small>
                   <small className="tier-tag vip"><Crown size={9}/> VIP</small>
                 </span>
               </span>
@@ -648,10 +646,9 @@ function Dashboard() {
           {modules.filter(({title}) => visibleModules.includes(title)).map(({title,sub,tier,icon:Icon}, index)=>{
             const featureRule = dashboardFeatureRules.find(rule => rule.title === title);
             const configuredTier = featureRule?.tier || "FREE";
-            const showProBadge = featureRule?.enabled !== false && configuredTier === "PRO";
-            const showVipBadge = featureRule?.enabled !== false && (configuredTier === "VIP" || configuredTier === "PRO");
+            const showVipBadge = featureRule?.enabled !== false && configuredTier === "VIP";
             const showNewBadge = tier === "NEW";
-            return <div className={`feature-accordion ${expanded===title?"expanded":""}`} key={title} id={`module-${index}`}><button className="accordion-trigger" onClick={()=>setExpanded(expanded===title?null:title)}><span className="accordion-name">{title}{(showProBadge || (featureRule?.enabled !== false && configuredTier === "VIP")) && <span className="tier-badge-group">{showProBadge && <small className="tier-tag"><LockKeyhole size={9}/> PRO</small>}{showVipBadge && <small className="tier-tag vip"><Crown size={9}/> VIP</small>}</span>}{showNewBadge && <small className="tier-tag new">NEW</small>}</span><ChevronDown size={16}/></button>{expanded === title && (
+            return <div className={`feature-accordion ${expanded===title?"expanded":""}`} key={title} id={`module-${index}`}><button className="accordion-trigger" onClick={()=>setExpanded(expanded===title?null:title)}><span className="accordion-name">{title}{showVipBadge && <span className="tier-badge-group"><small className="tier-tag vip"><Crown size={9}/> VIP</small></span>}{showNewBadge && <small className="tier-tag new">NEW</small>}</span><ChevronDown size={16}/></button>{expanded === title && (
               title === "Market Intelligence" ? (
                 <div className="accordion-body market-intelligence-body">
                   <FeatureGate title="Market Intelligence"><MarketIntelligence asset={asset} interval={tf === "1m" ? "1min" : tf === "5m" ? "5min" : tf === "10m" ? "10min" : tf === "15m" ? "15min" : tf === "30m" ? "30min" : tf === "1h" ? "1h" : tf === "4h" ? "4h" : tf === "1d" ? "1day" : tf === "1w" ? "1week" : tf === "1mo" ? "1month" : "15min"} broker={activeBroker} /></FeatureGate>
@@ -694,17 +691,6 @@ function Dashboard() {
               ) : title === "Volumetric Delta & VWAP Bands" ? (
                 <div className="accordion-body volumetric-accordion-body">
                   <FeatureGate title="Volumetric Delta & VWAP Bands"><VolumetricVwap asset={asset} interval={tf} theme={lightTheme ? "light" : "dark"} /></FeatureGate>
-                </div>
-              ) : title === "Monetary Policy Watch & Macro Events" ? (
-                <div className="accordion-body macro-calendar-body" style={{ display: "block", width: "100%", minWidth: 0, overflow: "hidden" }}>
-                  <div className="macro-calendar-header" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-                    <div className="accordion-icon"><CalendarDays size={20} /></div>
-                    <div>
-                      <b>Economic Calendar</b>
-                      <p>Monitor upcoming economic releases and central-bank events.</p>
-                    </div>
-                  </div>
-                  <FeatureGate title="Monetary Policy Watch & Macro Events"><EconomicCalendar /></FeatureGate>
                 </div>
               ) : (
                 <div className="accordion-body">

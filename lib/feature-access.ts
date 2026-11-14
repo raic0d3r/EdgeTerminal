@@ -1,30 +1,28 @@
-export type AccessTier = "FREE" | "PRO" | "VIP";
+export type AccessTier = "FREE" | "VIP";
 export type FeatureRule = { title: string; tier: AccessTier; subscriptionUrl?: string; enabled: boolean };
 
 export const FEATURE_DEFINITIONS: Array<{ title: string; defaultTier: AccessTier }> = [
   { title: "Market Intelligence", defaultTier: "FREE" },
   { title: "Position Trading Panel", defaultTier: "FREE" },
   { title: "Order Flow Footprint", defaultTier: "VIP" },
-  { title: "Volume Profile & Footprint Analysis", defaultTier: "PRO" },
-  { title: "Integrated Trade Journal & Analytics", defaultTier: "FREE" },
+  { title: "Volume Profile & Footprint Analysis", defaultTier: "VIP" },
+  { title: "Integrated Trade Journal & Analytics", defaultTier: "VIP" },
   { title: "Master Confluence & Probability Engine", defaultTier: "FREE" },
-  { title: "Master Scorecard & Key Levels", defaultTier: "PRO" },
-  { title: "COT Institutional Sentiment", defaultTier: "FREE" },
+  { title: "Master Scorecard & Key Levels", defaultTier: "VIP" },
+  { title: "COT Institutional Sentiment", defaultTier: "VIP" },
   { title: "Institutional Liquidity & Book Depth Map", defaultTier: "FREE" },
   { title: "Institutional Liquidity Heatmap", defaultTier: "FREE" },
-  { title: "Volumetric Delta & VWAP Bands", defaultTier: "FREE" },
-  { title: "Intermarket Correlation Matrix", defaultTier: "FREE" },
-  { title: "Monetary Policy Watch & Macro Events", defaultTier: "PRO" },
+  { title: "Volumetric Delta & VWAP Bands", defaultTier: "VIP" },
+  { title: "Intermarket Correlation Matrix", defaultTier: "VIP" },
 ];
 
 export function defaultFeatureRules(): FeatureRule[] {
-  const proUrl = process.env.NEXT_PUBLIC_PRO_SUBSCRIPTION_URL || process.env.PRO_SUBSCRIPTION_URL || "";
   const vipUrl = process.env.NEXT_PUBLIC_VIP_SUBSCRIPTION_URL || process.env.VIP_SUBSCRIPTION_URL || "";
   return FEATURE_DEFINITIONS.map(({ title, defaultTier }) => ({
     title,
     tier: defaultTier,
     enabled: true,
-    subscriptionUrl: defaultTier === "VIP" ? vipUrl : defaultTier === "PRO" ? proUrl : "",
+    subscriptionUrl: defaultTier === "VIP" ? vipUrl : "",
   }));
 }
 
@@ -36,7 +34,7 @@ export function normalizeFeatureRules(input: unknown): FeatureRule[] {
   return defaults.map((fallback) => {
     const item = byTitle.get(fallback.title);
     if (!item) return fallback;
-    const tier = item.tier === "PRO" || item.tier === "VIP" || item.tier === "FREE" ? item.tier : fallback.tier;
+    const tier = item.tier === "PRO" || item.tier === "VIP" ? "VIP" : item.tier === "FREE" ? "FREE" : fallback.tier;
     return { title: fallback.title, tier, enabled: typeof item.enabled === "boolean" ? item.enabled : true, subscriptionUrl: typeof item.subscriptionUrl === "string" ? item.subscriptionUrl.slice(0, 2000) : fallback.subscriptionUrl };
   });
 }
@@ -88,7 +86,6 @@ export function validateFeatureRules(input: unknown): FeatureRule[] {
 
     if (
       item.tier !== "FREE" &&
-      item.tier !== "PRO" &&
       item.tier !== "VIP"
     ) {
       throw new Error(`Invalid access tier: ${item.title}`);

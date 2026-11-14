@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminServices, isAllowlistedAdmin } from "@/lib/firebase-admin";
 import { defaultFeatureRules, normalizeFeatureRules } from "@/lib/feature-access";
 
-export type SubscriptionPlan = "member" | "pro" | "vip" | "admin";
+export type SubscriptionPlan = "member" | "vip" | "admin";
 
 type AccessResult =
   | { allowed: true; uid: string; plan: SubscriptionPlan; isAdmin: boolean }
@@ -39,7 +39,7 @@ export async function requireFeatureAccess(
     }
 
     const rawPlan = String(profile.role || profile.plan || "member").toLowerCase();
-    const plan: SubscriptionPlan = isAdmin ? "admin" : rawPlan === "vip" ? "vip" : rawPlan === "pro" ? "pro" : "member";
+    const plan: SubscriptionPlan = isAdmin ? "admin" : rawPlan === "vip" || rawPlan === "pro" ? "vip" : "member";
 
     const configuredRules = settingsSnapshot.exists ? settingsSnapshot.data()?.rules : undefined;
     const rules = normalizeFeatureRules(configuredRules ?? defaultFeatureRules());
@@ -53,9 +53,7 @@ export async function requireFeatureAccess(
       return { allowed: false, response: NextResponse.json({ error: "Feature is currently disabled." }, { status: 403 }) };
     }
 
-    const allowed = isAdmin || rule.tier === "FREE" ||
-      (rule.tier === "PRO" && (plan === "pro" || plan === "vip")) ||
-      (rule.tier === "VIP" && plan === "vip");
+    const allowed = isAdmin || rule.tier === "FREE" || (rule.tier === "VIP" && plan === "vip");
 
     if (!allowed) {
       return { allowed: false, response: NextResponse.json({ error: "Subscription required.", requiredTier: rule.tier }, { status: 403 }) };
