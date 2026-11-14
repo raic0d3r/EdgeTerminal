@@ -63,7 +63,11 @@ export default function FeatureSuggestions({ onBack }: { onBack: () => void }) {
     setError("");
     try {
       const data = await request("POST", { title: title.trim(), description: description.trim() });
-      setSuggestions((old) => [data.suggestion, ...old]);
+      const createdSuggestion = data.suggestion;
+      if (!createdSuggestion) {
+        throw new Error("The server saved no suggestion record in its response. Please refresh and check the suggestions list.");
+      }
+      setSuggestions((old) => [createdSuggestion, ...old]);
       setTitle("");
       setDescription("");
       setModalOpen(false);
