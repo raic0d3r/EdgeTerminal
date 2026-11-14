@@ -11,7 +11,7 @@ export type CTraderCandle = { time: number; open: number; high: number; low: num
 export async function getFpMarketsCandles(input: {
   clientId: string; clientSecret: string; accessToken: string;
   symbol: "XAU/USD" | "XAG/USD"; interval: string; limit?: number;
-}): Promise<{ symbol: string; interval: string; candles: CTraderCandle[]; broker: string }> {
+}): Promise<{ symbol: string; interval: string; candles: CTraderCandle[]; broker: string; pages: number; requestedBars: number; hasMore: boolean }> {
   const period = PERIODS[input.interval];
   if (!period) throw new Error(`Unsupported cTrader candle interval: ${input.interval}`);
   const ws = new WebSocket(URL, { handshakeTimeout: 10_000 });

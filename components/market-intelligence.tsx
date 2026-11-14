@@ -33,7 +33,7 @@ export default function MarketIntelligence({ asset, interval, broker }: Props) {
     setBusy(true);
     setError("");
     try {
-      const user = auth.currentUser;
+      const user = auth?.currentUser;
       if (!user) throw new Error("Sign in to analyze your connected broker history.");
       const token = await user.getIdToken();
       const query = new URLSearchParams({ symbol: asset, interval, provider: broker });
@@ -132,8 +132,8 @@ export default function MarketIntelligence({ asset, interval, broker }: Props) {
     if (!report?.variants?.length) return;
     const columns = ["instrument","broker","timeframe","strategy","rule","trades","developmentTrades","validationTrades","finalTestTrades","developmentExpectancyR","validationExpectancyR","finalTestExpectancyR","finalTestWinRate","finalTestProfitFactor","finalTestMaxDrawdownR","netFinalTestAt010R","filteredCandidates","status"] as const;
     const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const rows = report.variants.map(row => ({instrument:asset,broker,timeframe:interval,...row}));
-    const csv = [columns.join(","), ...rows.map(row => columns.map(col => esc(row[col])).join(","))].join("\r\n");
+    const rows = report.variants.map(row => ({ instrument: asset, broker, timeframe: interval, strategy: row.name, ...row }));
+    const csv = [columns.join(","), ...rows.map(row => columns.map(col => esc((row as Record<string, unknown>)[col])).join(","))].join("\r\n");
     const blob = new Blob(["\uFEFF",csv],{type:"text/csv;charset=utf-8"}); const url=URL.createObjectURL(blob); const a=document.createElement("a");
     a.href=url; a.download=`market-intelligence-${asset.replace("/","")}-${interval}-${broker}-v22-advanced-validation.csv`; a.click(); URL.revokeObjectURL(url);
   };
