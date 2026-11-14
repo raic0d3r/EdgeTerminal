@@ -22,6 +22,7 @@ import NewsCenter, { NewsTicker } from "@/components/news-center";
 import MasterConfluenceEngine from "@/components/master-confluence-engine";
 import MasterScorecard from "@/components/master-scorecard";
 import TradeJournal from "@/components/trade-journal";
+import MarketIntelligence from "@/components/market-intelligence";
 import FeatureSuggestions from "@/components/feature-suggestions";
 import PlatformDocumentation from "@/components/platform-documentation";
 import FaqModal from "@/components/faq-modal";
@@ -36,6 +37,7 @@ import {
 type DashboardFeatureRule = { title: string; tier: "FREE" | "PRO" | "VIP"; enabled: boolean; subscriptionUrl?: string };
 
 const modules: { title: string; sub: string; tier: string; icon: any }[] = [
+  { title: "Market Intelligence", sub: "Historical pattern matching, market structure and forecast evidence", tier: "FREE", icon: Activity },
   { title: "Volume Profile & Footprint Analysis", sub: "Session volume distribution, value area and footprint context", tier: "PRO", icon: BarChart3 },
   { title: "Institutional Liquidity Heatmap", sub: "Visualize liquidity concentrations and price areas", tier: "VIP", icon: Waves },
   { title: "Institutional Liquidity & Book Depth Map", sub: "Explore liquidity zones and available book-depth context", tier: "VIP", icon: Layers3 },
@@ -251,7 +253,6 @@ function Dashboard() {
   const [orderFlowOpen, setOrderFlowOpen] = useState(false);
   const [chartTimeframes, setChartTimeframes] = useState<string[]>(() => Array(16).fill("15m"));
   const setAllChartTimeframes = (value: string) => { setTf(value); setChartTimeframes(Array(16).fill(value)); };
-  const setChartTimeframe = (index: number, value: string) => { setChartTimeframes(current => current.map((item, i) => i === index ? value : item)); };
   useEffect(() => {
     let cancelled = false;
     async function checkAccess() {
@@ -459,7 +460,7 @@ function Dashboard() {
         ><Icon size={17}/></button>
       )}
       <div className="mobile-rail-timeframes" aria-label="Mobile chart timeframes">
-        {["1m", "5m", "10m", "15m", "30m", "1h", "4h"].map((value) => (
+        {["1m", "5m", "10m", "15m", "30m", "1h", "4h", "1d", "1w", "1mo"].map((value) => (
           <button
             key={value}
             type="button"
@@ -558,7 +559,7 @@ function Dashboard() {
             <button className={asset==="XAU/USD"?"chosen":""} onClick={()=>{setAsset("XAU/USD");setEntry(asset==="XAG/USD"?"53.828":"3995.38");setStop(asset==="XAG/USD"?"53.328":"3985.38")}}>◆ XAU/USD</button>
             <button className={asset==="XAG/USD"?"chosen":""} onClick={()=>{setAsset("XAG/USD");setEntry("53.828");setStop("53.328")}}>◆ XAG/USD</button>
           </div>
-          <div className="compact-timeframes">{[["1m","1m"],["5m","5m"],["10m","10m"],["15m","15m"],["30m","30m"],["1h","1h"],["4h","4h"],["1d","1d"],["1w","1w"],["1mo","1M"]].map(([value,label])=><button key={value} className={tf.toLowerCase()===value.toLowerCase()?"chosen":""} onClick={()=>setTf(value)}>{label}</button>)}</div>
+          <div className="compact-timeframes">{[["1m","1m"],["5m","5m"],["10m","10m"],["15m","15m"],["30m","30m"],["1h","1h"],["4h","4h"],["1d","1d"],["1w","1w"],["1mo","1M"]].map(([value,label])=><button key={value} className={tf.toLowerCase()===value.toLowerCase()?"chosen":""} onClick={()=>setAllChartTimeframes(value)}>{label}</button>)}</div>
         </div>
         <div className={`toolbar-current-price ${toolbarQuote?.changePercent == null ? "price-no-change" : toolbarQuote.changePercent >= 0 ? "price-up" : "price-down"}`} title={toolbarQuote ? `Source: ${toolbarQuote.source}${toolbarQuote.updatedAt ? ` · Updated ${new Date(toolbarQuote.updatedAt).toLocaleTimeString()}` : ""}` : "Waiting for market quote"} aria-live="polite">
           <strong>{toolbarQuote?.price != null ? toolbarQuote.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 3 }) : "—"}</strong>
@@ -586,12 +587,12 @@ function Dashboard() {
 
         <section className="advanced-panel" id="trading-chart-section">
           <div className="panel-title"><h1>Advanced Trading Chart</h1><span>⌃</span></div>
-          <div className="chart-mode-row"><div className="mode-switch"><button className={chartMode==="chart"?"mode-selected":""} onClick={()=>setChartMode("chart")}>▥ Chart</button>{positionPanelEnabled && <button className={chartMode==="position"?"mode-selected":""} onClick={()=>setChartMode("position")}>▣ Position</button>}<button className={chartMode==="risk"?"mode-selected":""} onClick={()=>setChartMode("risk")}>▤ Risk Calc</button><button className={chartMode==="combined"?"mode-selected":""} onClick={()=>setChartMode("combined")}>▰ Combined</button></div><div className="mode-tools">{chartMode!=="risk" && <div className="chart-layout-picker"><button type="button" className={`tool-button layout-trigger ${chartLayoutOpen?"tool-active":""}`} aria-label="Choose chart layout" aria-expanded={chartLayoutOpen} title="Choose chart layout" onClick={()=>setChartLayoutOpen(v=>!v)}><LayoutGrid size={13}/></button>{chartLayoutOpen && <div className="chart-layout-menu" role="dialog" aria-label="Choose chart layout"><div className="layout-menu-heading">Chart layout <span>{chartLayoutCount} {chartLayoutCount===1?"chart":"charts"}</span></div><div className="layout-options">{[1,2,3,4,6,8,9,12,16].map(count=><button type="button" key={count} className={chartLayoutCount===count?"selected":""} aria-label={`${count} chart layout`} title={`${count} charts`} onClick={()=>{setChartLayoutCount(count);setChartLayoutOpen(false);}}><span className={`layout-preview layout-preview-${count}`}>{Array.from({length:count},(_,i)=><i key={i}/>)}</span><small>{count}</small></button>)}</div></div>}</div>}<div className="small-timeframes">{[["1m","1m"],["5m","5m"],["15m","15m"],["1h","1h"],["4h","4h"],["1d","1d"],["1w","1w"],["1mo","1M"]].map(([value,label])=><button key={value} className={tf.toLowerCase()===value.toLowerCase()?"chosen":""} onClick={()=>setAllChartTimeframes(value)}>{label}</button>)}</div>{chartMode!=="risk" && <button type="button" aria-pressed={toolsVisible} title={toolsVisible ? "Hide left drawing tools" : "Show left drawing tools"} className={`tool-button ${toolsVisible?"tool-active":""}`} onClick={()=>setToolsVisible(v=>!v)}>♧ Tools</button>}<button className="tool-button" onClick={()=>setChartFullscreen(v=>!v)}>⛶ {chartFullscreen?"Close Fullscreen":"Fullscreen"}</button></div></div>
+          <div className="chart-mode-row"><div className="mode-switch"><button className={chartMode==="chart"?"mode-selected":""} onClick={()=>setChartMode("chart")}>▥ Chart</button>{positionPanelEnabled && <button className={chartMode==="position"?"mode-selected":""} onClick={()=>setChartMode("position")}>▣ Position</button>}<button className={chartMode==="risk"?"mode-selected":""} onClick={()=>setChartMode("risk")}>▤ Risk Calc</button><button className={chartMode==="combined"?"mode-selected":""} onClick={()=>setChartMode("combined")}>▰ Combined</button></div><div className="mode-tools">{chartMode!=="risk" && <div className="chart-layout-picker"><button type="button" className={`tool-button layout-trigger ${chartLayoutOpen?"tool-active":""}`} aria-label="Choose chart layout" aria-expanded={chartLayoutOpen} title="Choose chart layout" onClick={()=>setChartLayoutOpen(v=>!v)}><LayoutGrid size={13}/></button>{chartLayoutOpen && <div className="chart-layout-menu" role="dialog" aria-label="Choose chart layout"><div className="layout-menu-heading">Chart layout <span>{chartLayoutCount} {chartLayoutCount===1?"chart":"charts"}</span></div><div className="layout-options">{[1,2,3,4,6,8,9,12,16].map(count=><button type="button" key={count} className={chartLayoutCount===count?"selected":""} aria-label={`${count} chart layout`} title={`${count} charts`} onClick={()=>{setChartLayoutCount(count);setChartLayoutOpen(false);}}><span className={`layout-preview layout-preview-${count}`}>{Array.from({length:count},(_,i)=><i key={i}/>)}</span><small>{count}</small></button>)}</div></div>}</div>}<div className="small-timeframes">{[["1m","1m"],["5m","5m"],["10m","10m"],["15m","15m"],["1h","1h"],["4h","4h"],["1d","1d"],["1w","1w"],["1mo","1M"]].map(([value,label])=><button key={value} className={tf.toLowerCase()===value.toLowerCase()?"chosen":""} onClick={()=>setAllChartTimeframes(value)}>{label}</button>)}</div>{chartMode!=="risk" && <button type="button" aria-pressed={toolsVisible} title={toolsVisible ? "Hide left drawing tools" : "Show left drawing tools"} className={`tool-button ${toolsVisible?"tool-active":""}`} onClick={()=>setToolsVisible(v=>!v)}>♧ Tools</button>}<button className="tool-button" onClick={()=>setChartFullscreen(v=>!v)}>⛶ {chartFullscreen?"Close Fullscreen":"Fullscreen"}</button></div></div>
 
           <div className={`chart-risk-grid mode-${chartMode}`}>
             <div className={`chart-layout-grid chart-layout-count-${chartLayoutCount}`}>
               {Array.from({length: chartLayoutCount}, (_, index) => <div className="chart-frame" key={`${chartLayoutCount}-${index}`}>
-                <div className="chart-symbolbar"><b>⌕ {asset==="XAU/USD"?"XAUUSD":"XAGUSD"}</b><span>＋</span><div className="chart-quick-tf" aria-label={`Timeframe for chart ${index+1}`}>{[["1m","1m"],["5m","5m"],["15m","15m"],["30m","30m"],["1h","1h"],["4h","4h"],["1d","1d"],["1w","1w"],["1mo","1M"]].map(([value,label])=><button type="button" key={value} aria-pressed={(chartTimeframes[index] || "15m").toLowerCase()===value.toLowerCase()} className={(chartTimeframes[index] || "15m").toLowerCase()===value.toLowerCase()?"chosen":""} onClick={()=>setChartTimeframe(index,value)}>{label}</button>)}</div><span className="chart-label">{chartLayoutCount>1?`Chart ${index+1}`:"TradingView chart"} · {chartTimeframes[index] || "15m"}</span></div>
+                <div className="chart-symbolbar"><b>⌕ {asset==="XAU/USD"?"XAUUSD":"XAGUSD"}</b><span>＋</span><div className="chart-quick-tf" aria-label={`Timeframe for chart ${index+1}`}>{[["1m","1m"],["5m","5m"],["10m","10m"],["15m","15m"],["30m","30m"],["1h","1h"],["4h","4h"],["1d","1d"],["1w","1w"],["1mo","1M"]].map(([value,label])=><button type="button" key={value} aria-pressed={(chartTimeframes[index] || "15m").toLowerCase()===value.toLowerCase()} className={(chartTimeframes[index] || "15m").toLowerCase()===value.toLowerCase()?"chosen":""} onClick={()=>setAllChartTimeframes(value)}>{label}</button>)}</div><span className="chart-label">{chartLayoutCount>1?`Chart ${index+1}`:"TradingView chart"} · {chartTimeframes[index] || "15m"}</span></div>
                 <div className="chart-embed"><TradingViewChart symbol={asset==="XAU/USD"?"OANDA:XAUUSD":"OANDA:XAGUSD"} interval={intervalMap[chartTimeframes[index] || "15m"] || "15"} showTools={toolsVisible}/></div>
               </div>)}
             </div>
@@ -636,7 +637,7 @@ function Dashboard() {
                 <FeatureGate title="Order Flow Footprint">
                   <OrderFlowFootprint
                     asset={asset}
-                    interval={tf === "1m" ? "1min" : tf === "5m" ? "5min" : tf === "15m" ? "15min" : tf === "30m" ? "30min" : tf === "1h" ? "1h" : tf === "4h" ? "4h" : tf === "1d" ? "1d" : tf === "1w" ? "1w" : tf === "1mo" ? "1mo" : "15min"}
+                    interval={tf === "1m" ? "1min" : tf === "5m" ? "5min" : tf === "10m" ? "10min" : tf === "15m" ? "15min" : tf === "30m" ? "30min" : tf === "1h" ? "1h" : tf === "4h" ? "4h" : tf === "1d" ? "1day" : tf === "1w" ? "1week" : tf === "1mo" ? "1month" : "15min"}
                   />
                 </FeatureGate>
               </div>
@@ -651,9 +652,13 @@ function Dashboard() {
             const showVipBadge = featureRule?.enabled !== false && (configuredTier === "VIP" || configuredTier === "PRO");
             const showNewBadge = tier === "NEW";
             return <div className={`feature-accordion ${expanded===title?"expanded":""}`} key={title} id={`module-${index}`}><button className="accordion-trigger" onClick={()=>setExpanded(expanded===title?null:title)}><span className="accordion-name">{title}{(showProBadge || (featureRule?.enabled !== false && configuredTier === "VIP")) && <span className="tier-badge-group">{showProBadge && <small className="tier-tag"><LockKeyhole size={9}/> PRO</small>}{showVipBadge && <small className="tier-tag vip"><Crown size={9}/> VIP</small>}</span>}{showNewBadge && <small className="tier-tag new">NEW</small>}</span><ChevronDown size={16}/></button>{expanded === title && (
-              title === "Order Flow Footprint" ? (
+              title === "Market Intelligence" ? (
+                <div className="accordion-body market-intelligence-body">
+                  <FeatureGate title="Market Intelligence"><MarketIntelligence asset={asset} interval={tf === "1m" ? "1min" : tf === "5m" ? "5min" : tf === "10m" ? "10min" : tf === "15m" ? "15min" : tf === "30m" ? "30min" : tf === "1h" ? "1h" : tf === "4h" ? "4h" : tf === "1d" ? "1day" : tf === "1w" ? "1week" : tf === "1mo" ? "1month" : "15min"} broker={activeBroker} /></FeatureGate>
+                </div>
+              ) : title === "Order Flow Footprint" ? (
                 <div className="accordion-body order-flow-accordion-body">
-                  <FeatureGate title="Order Flow Footprint"><OrderFlowFootprint asset={asset} interval={tf === "1m" ? "1min" : tf === "5m" ? "5min" : tf === "15m" ? "15min" : tf === "30m" ? "30min" : tf === "1h" ? "1h" : tf === "4h" ? "4h" : tf === "1d" ? "1d" : tf === "1w" ? "1w" : tf === "1mo" ? "1mo" : "15min"} /></FeatureGate>
+                  <FeatureGate title="Order Flow Footprint"><OrderFlowFootprint asset={asset} interval={tf === "1m" ? "1min" : tf === "5m" ? "5min" : tf === "10m" ? "10min" : tf === "15m" ? "15min" : tf === "30m" ? "30min" : tf === "1h" ? "1h" : tf === "4h" ? "4h" : tf === "1d" ? "1day" : tf === "1w" ? "1week" : tf === "1mo" ? "1month" : "15min"} /></FeatureGate>
                   <OrderFlowMarketReplay />
                 </div>
               ) : title === "Volume Profile & Footprint Analysis" ? (

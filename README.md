@@ -144,3 +144,94 @@ A separate heatmap module is available in the dashboard. It renders a time-price
 
 ## cTrader UID-bound sessions
 See `CTRADER-UID-SESSION-MIGRATION.md` for the OAuth/session migration, required `CTRADER_TOKEN_ENCRYPTION_KEY`, deployment steps, and two-user isolation tests.
+
+
+## Market Intelligence — historical analysis milestone
+
+The Market Intelligence module is available in the dashboard feature list. It reuses the authenticated `GET /api/market` broker data route for cTrader and Exness candles (XAU/USD and XAG/USD); the new analysis route forwards the existing Firebase bearer token and cTrader session cookie rather than creating another broker connection.
+
+The analysis engine currently includes:
+- Five-candle OHLC-shape similarity search over available historical bars.
+- Confirmed swing pivots, basic bullish/bearish/range structure and sweep/reclaim detection.
+- Higher-timeframe structure alignment fetched from the same broker candle API where a higher interval is supported (for example, M15 to H4 or H4 to D1).
+- Pivot-candle supply/demand areas.
+- Historical forward-outcome labels using a 1.5R target and 1R stop over a 12-bar horizon. Ambiguous same-candle target/stop hits are counted conservatively as losses; unresolved cases are kept separate.
+- BUY/SELL/WAIT, illustrative entry/stop/target levels, evidence, confidence ceiling and uncertainty notes.
+
+The dashboard also optionally reads the existing `/api/orderflow/absorption` pipeline when the signed-in user has access to the Order Flow Footprint feature. If that VIP-gated data is unavailable, candle-based analysis continues without it. Stored trade-print provenance is shown as returned by that endpoint; synthetic demo records are not promoted to live exchange flow.
+
+Important limitations: this is an initial heuristic research engine, not a trained or calibrated AI model. Broker candles are account-specific and their volume may be tick volume. Historical match statistics are based only on the returned candle window, can be sparse, and are not evidence of future profitability. Validate across longer out-of-sample datasets, multiple market regimes, spread/slippage and broker-specific contract conditions before using forecasts. No order placement, auto-trading or notifications are implemented.
+
+Run the added contract tests with `npm run test:market-intelligence`. The normal project build remains `npm run build`.
+
+### Market Intelligence walk-forward validation
+
+Market Intelligence now requests up to 500 broker candles (subject to broker history availability) and displays a separate walk-forward breakout benchmark alongside the nearest-pattern comparison. The benchmark uses a 20-bar prior high/low breakout, enters at the next candle open, applies a 1.5R target / 1R stop and a 12-bar maximum hold, skips overlapping positions, and counts same-candle stop/target ties as losses. It reports resolved win rate, expectancy, profit factor, and peak-to-trough drawdown in R. Unresolved positions are marked to the final available close and are reported separately. This benchmark is deliberately distinct from the live forecast rule and must not be interpreted as proof of future profitability; broker spread, commissions, slippage, and execution latency are not modeled.
+
+### Market Intelligence v3 – multi-timeframe structure
+
+- Market Intelligence now requests 5m, 15m, 1h, 4h and daily broker candles through the existing authenticated `/api/market` route. Missing intervals are reported as unavailable; no synthetic data is substituted.
+- The forecast includes an independent swing-structure classification for each available interval. The multi-timeframe vote is deliberately capped and contributes only a small confluence adjustment.
+- The structure panel labels confirmed close-through events as bullish/bearish BOS when aligned with the existing swing trend, or CHoCH when the break runs counter to that trend. A wick-only sweep is not labelled as a confirmed BOS/CHoCH.
+- This is still candle-derived market structure, not institutional order-book or executed-volume data. The existing footprint pipeline is displayed separately and is not represented as live order flow unless actual stored trade prints are available.
+- The API remains analysis-only and does not submit, modify, or close orders.
+
+
+## Market Intelligence v5: broker-only spot analysis
+
+Market Intelligence uses the selected cTrader or Exness spot-metal candle feed. No paid third-party market-data provider or additional API key is required. Broker-reported volume is treated as tick volume, not verified executed volume. The volume-bias display compares volume on bullish versus bearish candles and is explicitly a candle-direction proxy; it cannot identify the actual aggressor, prove how many traders are long or short, or reveal the broker's full client positioning. Stored trade-print records are reported separately and are not treated as live broker executions unless their source is independently verified.
+
+The Market Intelligence liquidity map adds equal-high/low references, three-candle fair-value gaps, latest-candle displacement, and a candle-derived sweep check. These are OHLC inferences, not a view of actual resting orders or proof of institutional activity.
+
+## Market Intelligence v6 — spot liquidity analysis
+
+The v6 upgrade expands broker-candle analysis with ranked equal-high/equal-low liquidity references, recent sweep events with next-candle confirmation status, FVG strength and mitigation state, and candle-pattern order-block candidates (including breaker/mitigation status). These are transparent OHLC-derived proxies, not verified resting orders, institutional activity, or actual aggressor-side executions. Existing cTrader/Exness authentication, candle routing, and analysis-only behaviour are retained. No paid market-data provider or order execution is required.
+
+Run `npm run test:market-intelligence` to execute the Market Intelligence contract and deterministic fixture tests.
+
+
+## Market Intelligence v7 — liquidity-to-forecast confirmation
+
+The v7 confirmation layer converts the existing broker-candle liquidity observations into a transparent setup checklist. It scores directional sweep/reclaim, displacement, a newly crossed BOS/CHoCH level, higher-timeframe structure, multi-timeframe agreement, and proximity to a directional FVG. BUY/SELL is permitted only when the score reaches 60/100, at least three checks align, a sweep or newly crossed structure level is present, and a matching displacement candle exists; otherwise the forecast remains WAIT. A BOS/CHoCH is now recorded only on the candle that crosses the confirmed swing level, rather than remaining active on every later candle above/below it. The checklist is a candle-derived analytical filter, not proof of institutional intent or a guarantee of outcomes. It does not place orders.
+
+### Market Intelligence v8
+
+- Adds a broker-candle-only liquidity-confirmation walk-forward backtest for the currently selected instrument and timeframe. It uses prior confirmed pivots, sweep/reclaim, directional displacement, and optional structure/trend/FVG evidence; entries are modeled at the next candle open, with a 2R target and 1R stop. Same-bar stop/target ties are losses, overlapping positions are skipped, and unresolved outcomes are marked to close.
+- Adds conditional dynamic risk-planning levels from the latest candle close, confirmed swing structure and a median candle-range proxy: structural stop with a volatility buffer, plus 1R/2R/3R targets. When the live forecast is WAIT, these are explicitly conditional reference levels, not trade entries.
+- Backtest results are for the selected broker, symbol and timeframe only. They do not include higher-timeframe confirmation, spread, commission or slippage, and should not be interpreted as live-strategy performance until validated against longer broker history.
+
+## Market Intelligence v9 — strategy validation
+
+Version 9 adds chronological development/holdout reporting, monthly summaries, illustrative R-based cost sensitivity, independent timeframe comparisons, and a same-broker XAU/USD versus XAG/USD comparison. Reports are based on the broker's available candle history (currently up to 500 bars per interval); small samples are explicitly labelled insufficient. Cost scenarios are illustrative, not measured spread/commission/slippage. See `MARKET-INTELLIGENCE-V9.md` for methodology and limitations.
+
+
+## Market Intelligence v10 — broker-history pagination
+
+- Market Intelligence requests up to 2,500 candles for the selected broker/instrument/timeframe.
+- cTrader history is paginated in 500-bar count-based requests, stepping the `toTimestamp` cursor backwards and spacing requests to respect the historical-data request rate.
+- Exness history is requested in adjacent, bounded 500-bar UTC windows using the account-specific Access Point.
+- The engine now retains up to 2,500 selected-series candles for walk-forward validation rather than truncating the input back to 500.
+- The dashboard discloses actual returned candle count, requested count and earliest returned bar.
+- Multi-timeframe and alternate-instrument comparison requests remain capped at 500 bars each to limit concurrent broker load.
+- Broker history can still be shorter than requested due to account entitlements, symbol availability, market sessions or provider retention. No bars or trades are synthesized.
+- This remains analysis/backtesting only; no order execution was added.
+
+
+## Market Intelligence v11 diagnostics
+
+The liquidity-confirmation walk-forward report now includes descriptive breakdowns by bullish/bearish direction, UTC-derived candle-time session, recent market regime, exit reason (target/stop/time), and presence/absence of the structure-break, trend-alignment and FVG factors. These breakdowns reuse the same simulated historical trades; they do not create additional observations or improve the underlying strategy by themselves. Session labels assume candle timestamps are UTC and are explicitly marked for verification against the broker timestamp convention. Small subgroup samples are descriptive only.
+
+## Market Intelligence v16 — entry-quality research
+
+The v16 research panel compares eight pre-declared entry filters over one causal universe of broker-candle sweep/reclaim events: sweep/reclaim alone; sweep plus directional displacement; additional BOS, prior trend alignment, FVG, and/or a limited next-open chase filter. Every row uses next-bar-open entry, a shared structural/volatility stop, a fixed 1.5R target, the same maximum holding horizon, adverse-first same-candle stop/target handling, and non-overlapping trades per variant. The chronological 70/30 development/holdout split is unchanged. The panel reports development and holdout expectancy, holdout win rate/profit factor/drawdown, illustrative 0.10R net expectancy, and median displacement/entry-gap measures. A CSV export is available for the entry research table.
+
+This is exploratory, single-timeframe research. Variants share candidates and are correlated; comparing many filters creates selection bias. The 0.10R cost is illustrative, not a measured cTrader/Exness spread, commission or slippage estimate. The study does not change the live forecast or execute trades. Holdout groups under 10 trades are labelled insufficient, 10–29 descriptive, and 30+ exploratory only; none of these labels establishes statistical significance or live profitability.
+
+
+## Market Intelligence v17 — sweep quality research
+
+The Entry Quality Research study now includes three pre-declared sweep-quality filters (shallow, balanced, strong) in addition to the existing eight entry variants. Sweep depth is wick penetration beyond the prior confirmed swing divided by the prior 20-bar median candle range; reclaim strength is the close back through the swept swing on the same scale. The table and CSV export include median sweep depth, median reclaim strength, and raw shared-universe counts of candidates/wins/losses excluded by each filter. These excluded counts are descriptive and are not a substitute for the non-overlapping strategy trade simulation. Results remain chronological 70/30 development/holdout, fixed 1.5R target, next-bar-open entry, adverse-first same-candle handling, and illustrative 0.10R cost. No live forecast or execution logic is changed.
+
+
+## v44 Universal Push Notifications
+See `PUSH-NOTIFICATIONS-v44.md` for VAPID setup, platform requirements, and the explicit background market-monitor limitation.

@@ -58,8 +58,8 @@ export default function MasterConfluenceEngine({
   const [calendar, setCalendar] = useState<CalendarResponse | null>(null);
 
   const intervalMap: Record<string, string> = {
-    "1m": "1min", "5m": "5min", "10m": "5min", "15m": "15min",
-    "30m": "30min", "1H": "1h", "1h": "1h", "4H": "4h", "1D": "1day",
+    "1m": "1min", "5m": "5min", "10m": "10min", "15m": "15min",
+    "30m": "30min", "1H": "1h", "1h": "1h", "4H": "4h", "1D": "1day", "1w": "1week", "1mo": "1month",
   };
 
   useEffect(() => {
@@ -188,13 +188,13 @@ export default function MasterConfluenceEngine({
       <div className="mce-main-grid">
         <div className={`mce-regime-card ${bearish ? "bearish" : bullish ? "bullish" : "neutral"}`}>
           <div className="mce-eyebrow">MARKET REGIME INTERPRETER</div>
-          <h3>{analysis.available ? (bearish ? `${analysis.conviction} · Bearish` : bullish ? `${analysis.conviction} · Bullish` : "Neutral / Mixed Regime") : "Waiting for market data"}</h3>
+          <h3 className={`mce-bias-underline ${analysis.available ? (bearish ? "bearish" : bullish ? "bullish" : "neutral") : "neutral"}`}>{analysis.available ? (bearish ? `${analysis.conviction} · Bearish` : bullish ? `${analysis.conviction} · Bullish` : "Neutral / Mixed Regime") : "Waiting for market data"}</h3>
           <p><b>Market status:</b> {analysis.trendText}</p>
           <div className="mce-guidance-row">
             {bearish ? <ArrowDownRight size={17} /> : bullish ? <ArrowUpRight size={17} /> : <CircleHelp size={17} />}
             <span>{bearish ? "Watch whether rallies fail near recent resistance; avoid assuming a reversal." : bullish ? "Watch whether pullbacks hold; avoid chasing extended moves." : "Wait for trend and momentum to align before assigning a directional bias."}</span>
           </div>
-          <div className="mce-signal-banner">
+          <div className={`mce-signal-banner mce-bias-underline ${analysis.signal === "Bullish" ? "bullish" : analysis.signal === "Bearish" ? "bearish" : "neutral"}`}>
             <span className="mce-signal-dot" />
             {analysis.available ? `${analysis.signal.toUpperCase()} · ${analysis.conviction.toUpperCase()}` : "NO VERIFIED SIGNAL"}
           </div>

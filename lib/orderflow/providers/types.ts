@@ -6,7 +6,7 @@ export type OrderFlowFeedResult = {
   instrument: OrderFlowInstrument;
   trades: TradePrint[];
   source: string;
-  mode: "demo" | "live";
+  mode: "demo" | "live" | "historical";
   dataNote: string;
 };
 

@@ -83,13 +83,11 @@ export async function getExnessCandles(credentials: ExnessCredentials, symbol: s
     instrumentCache.set(instrumentKey, { instrument, expiresAt: Date.now() + 10 * 60_000 });
   }
 
-  // Use an explicit [from, to) window. Exness documents both `from+count`
-  // and `from+to`; the explicit window avoids ambiguity around bidirectional count.
-  const count = Math.min(Math.max(limit, 2), 500);
+  // Exness candles are requested in bounded 500-bar time windows. Pagination
+  // stays within the existing account-specific REST API and never mixes feeds.
+  const requestedBars = Math.min(Math.max(Math.floor(limit), 2), 2500);
+  const pageSize = 500;
   const toDate = new Date();
-  const fromDate = new Date(toDate.getTime() - tf.seconds * count * 1000);
-  const from = fromDate.toISOString();
-  const to = toDate.toISOString();
 
   const parseRows = (rows: any[]) => rows.flatMap((c: ExnessCandle) => {
     const bid = candleSide(c.bid), ask = candleSide(c.ask);
@@ -100,37 +98,38 @@ export async function getExnessCandles(credentials: ExnessCredentials, symbol: s
     return [{ time: new Date(c.time).toISOString(), ...o, volume: Number(c.volume || 0), volumeType: "tick" as const }];
   });
 
-  const attempts: Array<{ priceType: "both" | "bid" | "ask"; rows: any[]; fields: string }> = [];
-  for (const priceType of ["both", "bid", "ask"] as const) {
-    const query = new URLSearchParams([
-      ["instrument", instrument],
-      ["price_type", priceType],
-      ["timeframe", tf.api],
-      ["from", from],
-      ["to", to],
-    ]);
-    const path = `/v1/market-data/accounts/${credentials.accountId}/candles?${query.toString()}`;
-    const result = await exnessGet<any>(credentials, baseUrl, path);
-    const rows = Array.isArray(result?.candles) ? result.candles
-      : Array.isArray(result?.bidAskCandles?.candles) ? result.bidAskCandles.candles
-      : Array.isArray(result?.bidCandles?.candles) ? result.bidCandles.candles
-      : Array.isArray(result?.askCandles?.candles) ? result.askCandles.candles
-      : Array.isArray(result?.data?.candles) ? result.data.candles : [];
-    attempts.push({ priceType, rows, fields: Object.keys(result || {}).join(", ") || "empty response" });
-    const parsed = parseRows(rows);
-    if (parsed.length) {
-      candleCache.set(candleKey, { candles: parsed, expiresAt: Date.now() + 4_000 });
-      return parsed;
+  const collected = new Map<string, NormalizedExnessCandle>();
+  const diagnostics: string[] = [];
+  const pages = Math.ceil(requestedBars / pageSize);
+  for (let page = 0; page < pages; page += 1) {
+    const pageTo = new Date(toDate.getTime() - page * pageSize * tf.seconds * 1000);
+    const pageFrom = new Date(pageTo.getTime() - Math.min(pageSize, requestedBars - page * pageSize) * tf.seconds * 1000);
+    let pageRows: NormalizedExnessCandle[] = [];
+    for (const priceType of ["both", "bid", "ask"] as const) {
+      const query = new URLSearchParams([
+        ["instrument", instrument], ["price_type", priceType], ["timeframe", tf.api],
+        ["from", pageFrom.toISOString()], ["to", pageTo.toISOString()],
+      ]);
+      const path = `/v1/market-data/accounts/${credentials.accountId}/candles?${query.toString()}`;
+      const result = await exnessGet<any>(credentials, baseUrl, path);
+      const rows = Array.isArray(result?.candles) ? result.candles
+        : Array.isArray(result?.bidAskCandles?.candles) ? result.bidAskCandles.candles
+        : Array.isArray(result?.bidCandles?.candles) ? result.bidCandles.candles
+        : Array.isArray(result?.askCandles?.candles) ? result.askCandles.candles
+        : Array.isArray(result?.data?.candles) ? result.data.candles : [];
+      diagnostics.push(`${priceType}=${rows.length}`);
+      pageRows = parseRows(rows);
+      if (pageRows.length) break;
     }
+    for (const candle of pageRows) collected.set(candle.time, candle);
+    // Do not stop on an empty calendar window: weekends/holidays may create gaps.
   }
-
-  const counts = attempts.map((a) => `${a.priceType}=${a.rows.length}`).join(", ");
-  const shapes = attempts.map((a) => `${a.priceType}[${a.fields}]`).join("; ");
-  throw new Error(
-    `Exness returned no ${tf.api} candles for ${instrument} in requested UTC window ${from} to ${to}. ` +
-    `Rows by price_type: ${counts}. Response fields: ${shapes}. ` +
-    `Instrument is listed on the account, but this history window returned no candles.`
-  );
+  const candles = [...collected.values()].sort((a, b) => Date.parse(a.time) - Date.parse(b.time)).slice(-requestedBars);
+  if (!candles.length) {
+    throw new Error(`Exness returned no ${tf.api} candles for ${instrument} across ${pages} requested history windows. Rows by price_type: ${diagnostics.join(", ") || "none"}.`);
+  }
+  candleCache.set(candleKey, { candles, expiresAt: Date.now() + 4_000 });
+  return candles;
 }
 
 export async function getExnessLiveTick(credentials: ExnessCredentials, symbol: string, timeoutMs = 2500) {

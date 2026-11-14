@@ -29,8 +29,8 @@ export default function VolumetricVwap({ asset, interval, theme }: {
   const [showGuide, setShowGuide] = useState(true);
 
   const apiInterval: Record<string, string> = {
-    "1m": "1min", "5m": "5min", "15m": "15min", "30m": "30min",
-    "1H": "1h", "1h": "1h", "4H": "4h", "1D": "1day"
+    "1m": "1min", "5m": "5min", "10m": "10min", "15m": "15min", "30m": "30min",
+    "1H": "1h", "1h": "1h", "4H": "4h", "1D": "1day", "1w": "1week", "1mo": "1month"
   };
 
   async function load() {

@@ -29,7 +29,7 @@ export default function InstitutionalLiquidityHeatmap({asset,interval,theme}:{as
  const [chartZoom,setChartZoom]=useState(1);
  const [chartPan,setChartPan]=useState(0);
  const dragRef=useRef<{x:number;pan:number}|null>(null);
- const apiInterval:Record<string,string>={"1m":"1min","5m":"5min","10m":"5min","15m":"15min","30m":"30min","1h":"1h","4h":"4h","1d":"1day","1w":"1day","1mo":"1day"};
+ const apiInterval:Record<string,string>={"1m":"1min","5m":"5min","10m":"10min","15m":"15min","30m":"30min","1h":"1h","4h":"4h","1d":"1day","1w":"1week","1mo":"1month"};
  const fetchMarket=async()=>{setLoading(true);try{const r=await fetchMarketData(marketApiUrl(asset, apiInterval[interval]||"15min"),{cache:"no-store"});const j=await r.json();setApi(j);setLastUpdated(new Date().toISOString());}catch{setApi({status:"unavailable",error:"Could not load market candles."});}finally{setLoading(false);}};
  useEffect(()=>{let alive=true;const run=async()=>{try{const r=await fetchMarketData(marketApiUrl(asset, apiInterval[interval]||"15min"),{cache:"no-store"});const j=await r.json();if(alive){setApi(j);setLastUpdated(new Date().toISOString());}}catch{if(alive)setApi({status:"unavailable",error:"Could not load market candles."});}};void run();const t=window.setInterval(run,60000);return()=>{alive=false;window.clearInterval(t)}; // eslint-disable-next-line react-hooks/exhaustive-deps
  },[asset,interval]);

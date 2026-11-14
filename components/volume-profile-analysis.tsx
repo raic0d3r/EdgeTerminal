@@ -44,7 +44,7 @@ export default function VolumeProfileAnalysis({ asset, interval, theme }: { asse
   const [session, setSession] = useState<Session>("ALL");
   const [displayTimeZone, setDisplayTimeZone] = useState("Europe/Berlin");
 
-  const apiInterval: Record<string, string> = { "1m": "1min", "5m": "5min", "10m": "5min", "15m": "15min", "30m": "30min", "1h": "1h", "4h": "4h", "1d": "1day", "1w": "1day", "1mo": "1day" };
+  const apiInterval: Record<string, string> = { "1m": "1min", "5m": "5min", "10m": "10min", "15m": "15min", "30m": "30min", "1h": "1h", "4h": "4h", "1d": "1day", "1w": "1week", "1mo": "1month" };
   useEffect(() => {
     let active = true;
     const load = async () => {

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "security:audit": "node scripts/security/audit-api-routes.cjs"
+    "security:audit": "node scripts/security/audit-api-routes.cjs",
+    "test:market-intelligence": "node --test scripts/market-intelligence/*.test.cjs"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",

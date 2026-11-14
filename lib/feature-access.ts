@@ -2,6 +2,7 @@ export type AccessTier = "FREE" | "PRO" | "VIP";
 export type FeatureRule = { title: string; tier: AccessTier; subscriptionUrl?: string; enabled: boolean };
 
 export const FEATURE_DEFINITIONS: Array<{ title: string; defaultTier: AccessTier }> = [
+  { title: "Market Intelligence", defaultTier: "FREE" },
   { title: "Position Trading Panel", defaultTier: "FREE" },
   { title: "Order Flow Footprint", defaultTier: "VIP" },
   { title: "Volume Profile & Footprint Analysis", defaultTier: "PRO" },

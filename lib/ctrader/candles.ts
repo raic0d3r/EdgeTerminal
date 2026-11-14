@@ -60,41 +60,50 @@ export async function getFpMarketsCandles(input: {
     if (!symbol) throw new Error(`${target} is not available on the connected cTrader broker account.`);
     const symbolId = Number(symbol.symbolId);
     if (!Number.isSafeInteger(symbolId) || symbolId <= 0) throw new Error(`cTrader broker returned an invalid symbol ID for ${target}.`);
-    const limit = Math.max(20, Math.min(input.limit ?? 300, 500));
-    const to = Date.now();
-    // Use cTrader's count-based history window instead of deriving fromTimestamp
-    // from the bar interval. A fixed 300-minute window returns zero M1 bars when
-    // the market has been closed for a weekend or holiday, even though history
-    // exists. count asks cTrader for the latest N bars before toTimestamp.
-    const barsRes = await request(2137, {
-      ctidTraderAccountId: accountId,
-      symbolId,
-      period,
-      toTimestamp: to,
-      count: limit,
-    }, 2138);
-    const rawBars = Array.isArray(barsRes.payload?.trendbar) ? barsRes.payload!.trendbar as Record<string, unknown>[] :
-      Array.isArray(barsRes.payload?.trendBar) ? barsRes.payload!.trendBar as Record<string, unknown>[] : [];
-    const candles = rawBars.map((bar): CTraderCandle | null => {
-      const lowRaw = Number(bar.low);
-      const openDelta = Number(bar.deltaOpen ?? 0);
-      const closeDelta = Number(bar.deltaClose ?? 0);
-      const highDelta = Number(bar.deltaHigh ?? 0);
-      const minute = Number(bar.utcTimestampInMinutes);
-      if (![lowRaw, openDelta, closeDelta, highDelta, minute].every(Number.isFinite)) return null;
-      const low = lowRaw / 100_000;
-      const open = (lowRaw + openDelta) / 100_000;
-      const close = (lowRaw + closeDelta) / 100_000;
-      const high = (lowRaw + highDelta) / 100_000;
-      return { time: minute * 60_000, open, high: Math.max(high, open, close, low), low: Math.min(low, open, close, high), close, volume: Number(bar.volume ?? 0), volumeType: "tick" };
-    }).filter((bar): bar is CTraderCandle => bar !== null).sort((a, b) => a.time - b.time);
+    const requestedBars = Math.max(20, Math.min(input.limit ?? 500, 2500));
+    const pageSize = 500;
+    let cursor = Date.now();
+    const allCandles = new Map<number, CTraderCandle>();
+    let pages = 0;
+    let lastPayload: Record<string, unknown> = {};
+    while (allCandles.size < requestedBars && pages < Math.ceil(requestedBars / pageSize)) {
+      // cTrader count-based history is anchored at toTimestamp. Move the cursor
+      // to just before the oldest bar from the previous page to avoid overlap.
+      const barsRes = await request(2137, {
+        ctidTraderAccountId: accountId, symbolId, period,
+        toTimestamp: cursor, count: Math.min(pageSize, requestedBars - allCandles.size),
+      }, 2138);
+      pages += 1;
+      lastPayload = barsRes.payload || {};
+      const rawBars = Array.isArray(barsRes.payload?.trendbar) ? barsRes.payload!.trendbar as Record<string, unknown>[] :
+        Array.isArray(barsRes.payload?.trendBar) ? barsRes.payload!.trendBar as Record<string, unknown>[] : [];
+      const pageCandles = rawBars.map((bar): CTraderCandle | null => {
+        const lowRaw = Number(bar.low), openDelta = Number(bar.deltaOpen ?? 0);
+        const closeDelta = Number(bar.deltaClose ?? 0), highDelta = Number(bar.deltaHigh ?? 0);
+        const minute = Number(bar.utcTimestampInMinutes);
+        if (![lowRaw, openDelta, closeDelta, highDelta, minute].every(Number.isFinite)) return null;
+        const low = lowRaw / 100_000, open = (lowRaw + openDelta) / 100_000;
+        const close = (lowRaw + closeDelta) / 100_000, high = (lowRaw + highDelta) / 100_000;
+        return { time: minute * 60_000, open, high: Math.max(high, open, close, low), low: Math.min(low, open, close, high), close, volume: Number(bar.volume ?? 0), volumeType: "tick" };
+      }).filter((bar): bar is CTraderCandle => bar !== null).sort((a, b) => a.time - b.time);
+      const before = allCandles.size;
+      for (const candle of pageCandles) allCandles.set(candle.time, candle);
+      if (!pageCandles.length || allCandles.size === before) break;
+      const oldest = pageCandles[0].time;
+      if (oldest <= 0 || oldest >= cursor) break;
+      cursor = oldest - 1;
+      if (barsRes.payload?.hasMore === false || (barsRes.payload?.hasMore !== true && rawBars.length < pageSize)) break;
+      // cTrader allows at most five historical-data requests per second.
+      if (allCandles.size < requestedBars) await new Promise(resolve => setTimeout(resolve, 220));
+    }
+    const candles = [...allCandles.values()].sort((a, b) => a.time - b.time).slice(-requestedBars);
     if (!candles.length) {
-      const responseKeys = Object.keys(barsRes.payload ?? {});
-      const responseSymbol = asString(barsRes.payload?.symbolId || symbolId);
-      const responsePeriod = asString(barsRes.payload?.period || period);
+      const responseKeys = Object.keys(lastPayload);
+      const responseSymbol = asString(lastPayload.symbolId || symbolId);
+      const responsePeriod = asString(lastPayload.period || period);
       throw new Error(`cTrader broker returned an empty ${input.interval} history response for ${target} (symbolId ${responseSymbol}, period ${responsePeriod}, fields: ${responseKeys.join(",") || "none"}). Check the broker's historical-data availability for this symbol.`);
     }
-    return { symbol: target, interval: input.interval, candles, broker: asString(account.brokerTitleShort) };
+    return { symbol: target, interval: input.interval, candles, broker: asString(account.brokerTitleShort), pages, requestedBars, hasMore: lastPayload.hasMore === true };
   } finally {
     for (const resolve of pending.values()) resolve({ payloadType: -1, payload: {} });
     pending.clear(); ws.off("message", onMessage);

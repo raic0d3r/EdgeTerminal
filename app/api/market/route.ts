@@ -12,16 +12,44 @@ import { enforceIpRateLimit } from "@/lib/server/rate-limit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const ALLOWED_INTERVALS = new Set(["1min", "5min", "15min", "30min", "1h", "4h", "1day"]);
+const ALLOWED_INTERVALS = new Set(["1min", "5min", "10min", "15min", "30min", "1h", "4h", "1day", "1week", "1month"]);
 const ALLOWED_SYMBOLS = new Set(["XAU/USD", "XAG/USD"]);
+
+type BrokerCandle = { time: string; open: number; high: number; low: number; close: number; volume?: number | null; volumeType?: "tick" };
+function aggregateBrokerCandles(candles: BrokerCandle[], interval: "10min" | "1week" | "1month"): BrokerCandle[] {
+  const buckets = new Map<number, BrokerCandle[]>();
+  for (const candle of candles) {
+    const timestamp = Date.parse(candle.time);
+    if (!Number.isFinite(timestamp)) continue;
+    const date = new Date(timestamp);
+    let key: number;
+    if (interval === "10min") key = Math.floor(timestamp / 600_000);
+    else if (interval === "1week") {
+      const monday = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+      monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+      key = monday.getTime();
+    } else key = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1);
+    buckets.set(key, [...(buckets.get(key) || []), candle]);
+  }
+  return [...buckets.entries()].sort(([a], [b]) => a - b).map(([key, rows]) => ({
+    time: new Date(key * (interval === "10min" ? 600_000 : 1)).toISOString(),
+    open: rows[0].open, high: Math.max(...rows.map(row => row.high)),
+    low: Math.min(...rows.map(row => row.low)), close: rows[rows.length - 1].close,
+    volume: rows.reduce((sum, row) => sum + (row.volume || 0), 0), volumeType: "tick" as const,
+  }));
+}
+
 
 export async function GET(request: NextRequest) {
   const limited = await enforceIpRateLimit(request, "market-data", 60, 60);
   if (limited) return limited;
   const symbol = (request.nextUrl.searchParams.get("symbol") || "XAU/USD").toUpperCase();
   const interval = request.nextUrl.searchParams.get("interval") || "5min";
+  const sourceInterval = interval === "10min" ? "5min" : interval === "1week" || interval === "1month" ? "1day" : interval;
   const requestedProvider = request.nextUrl.searchParams.get("provider");
   const purpose = request.nextUrl.searchParams.get("purpose");
+  const requestedHistoryBars = Number(request.nextUrl.searchParams.get("historyBars") || 500);
+  const historyBars = Number.isInteger(requestedHistoryBars) ? Math.max(100, Math.min(requestedHistoryBars, 2500)) : 500;
   const isToolbarQuote = purpose === "toolbar";
 
   const provider = (requestedProvider || "ctrader").toLowerCase();
@@ -56,18 +84,18 @@ export async function GET(request: NextRequest) {
         // Use the largest supported history window for the chart as well as
         // the compact toolbar. A 300-bar window can be too short after a
         // weekend/holiday, especially on M15 and higher timeframes.
-        candles = await getExnessCandles(credentials, symbol, interval, 500);
+        candles = await getExnessCandles(credentials, symbol, sourceInterval, historyBars);
       } catch (primaryError) {
         // If the selected timeframe genuinely has no returned history, keep
         // the Exness chart usable by trying another Exness timeframe. This is
         // never a cTrader fallback. Return the actual interval used so the UI
         // can disclose the resolution rather than silently inventing bars.
-        const fallbackIntervals = ["5min", "15min", "30min", "1h", "4h", "1day"].filter((value) => value !== interval);
+        const fallbackIntervals = interval === "10min" ? [] : ["1day", "4h", "1h", "30min", "15min", "5min"].filter((value) => value !== sourceInterval);
         let recovered: Awaited<ReturnType<typeof getExnessCandles>> | null = null;
         let lastError: unknown = primaryError;
         for (const fallbackInterval of fallbackIntervals) {
           try {
-            recovered = await getExnessCandles(credentials, symbol, fallbackInterval, 500);
+            recovered = await getExnessCandles(credentials, symbol, fallbackInterval, Math.min(historyBars, 500));
             candleIntervalUsed = fallbackInterval;
             break;
           } catch (error) { lastError = error; }
@@ -82,24 +110,28 @@ export async function GET(request: NextRequest) {
       } catch (error) {
         tickError = error instanceof Error ? error.message : "Exness live quote unavailable";
       }
-      const lastCandle = candles[candles.length - 1];
+      const displayCandles = (interval === "10min" || interval === "1week" || interval === "1month")
+        ? aggregateBrokerCandles(candles.map(c => ({ time: String(c.time), open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume, volumeType: "tick" as const })), interval)
+        : candles;
+      const lastCandle = displayCandles[displayCandles.length - 1];
       // If Exness has no live tick (for example, while the market is closed),
       // show the most recent broker candle close in the toolbar and label it
       // LAST CLOSE. Never substitute a cTrader or synthetic price.
       const hasLiveTick = Boolean(tick);
       const price = tick ? (tick.bid + tick.ask) / 2 : (lastCandle?.close ?? null);
-      const previous = candles.length > 1 ? candles[candles.length - 2] : undefined;
+      const previous = displayCandles.length > 1 ? displayCandles[displayCandles.length - 2] : undefined;
       const data = {
         symbol, price, lastCandleClose: lastCandle?.close ?? null, bid: tick?.bid ?? null, ask: tick?.ask ?? null,
-        candleIntervalUsed,
+        candleIntervalUsed: interval,
+        sourceCandleInterval: candleIntervalUsed,
         change: previous && price != null ? price - previous.close : null,
         changePercent: previous?.close && price != null ? ((price - previous.close) / previous.close) * 100 : null,
         currency: "USD" as const, source: "Exness", mode: hasLiveTick ? "live" as const : "closed" as const,
         updatedAt: tick ? new Date(tick.timestamp).toISOString() : (lastCandle?.time ?? null),
-        candles, volumeType: "tick" as const,
+        candles: displayCandles, history: { requestedBars: historyBars, returnedBars: displayCandles.length, oldestCandle: displayCandles[0]?.time ?? null, newestCandle: lastCandle?.time ?? null }, volumeType: "tick" as const,
         dataNote: tick
-          ? `Exness account-specific live bid/ask and historical candles${candleIntervalUsed !== interval ? `; historical candles are ${candleIntervalUsed} because ${interval} was unavailable` : ""}. Quote ticks are not executed trades.`
-          : `No live Exness quote is available. Displaying the most recent Exness candle close as LAST CLOSE${candleIntervalUsed !== interval ? `; historical candles are ${candleIntervalUsed} because ${interval} was unavailable` : ""}.`,
+          ? `Exness account-specific live bid/ask and historical candles${["10min", "1week", "1month"].includes(interval) ? `; ${interval} OHLC candles aggregated from ${sourceInterval} broker candles` : candleIntervalUsed !== sourceInterval ? `; source candles are ${candleIntervalUsed}` : ""}. Quote ticks are not executed trades.`
+          : `No live Exness quote is available. Displaying the most recent Exness candle close as LAST CLOSE${["10min", "1week", "1month"].includes(interval) ? `; ${interval} OHLC candles aggregated from ${sourceInterval} broker candles` : candleIntervalUsed !== sourceInterval ? `; source candles are ${candleIntervalUsed}` : ""}.`,
       };
       return NextResponse.json({
         status: hasLiveTick ? "live" : "closed", provider: "exness",
@@ -154,8 +186,8 @@ export async function GET(request: NextRequest) {
         clientSecret,
         accessToken: session.accessToken,
         symbol: symbol as "XAU/USD" | "XAG/USD",
-        interval,
-        limit: 300,
+        interval: sourceInterval,
+        limit: historyBars,
       }),
     ]);
     if (historyResult.status === "rejected") throw historyResult.reason;
@@ -164,7 +196,7 @@ export async function GET(request: NextRequest) {
     const wanted = symbol === "XAG/USD" ? "XAGUSD" : "XAUUSD";
     const liveQuote = probe?.quotes.find((item) => item.requested === wanted && item.spotEventReceived);
 
-    const candles = history.candles.map((bar) => ({
+    const sourceCandles = history.candles.map((bar) => ({
       time: new Date(bar.time).toISOString(),
       open: bar.open,
       high: bar.high,
@@ -173,6 +205,9 @@ export async function GET(request: NextRequest) {
       volume: bar.volume,
       volumeType: "tick" as const,
     }));
+    const candles = (interval === "10min" || interval === "1week" || interval === "1month")
+      ? aggregateBrokerCandles(sourceCandles, interval)
+      : sourceCandles;
     const hasLiveQuote = Boolean(liveQuote && liveQuote.bid != null && liveQuote.ask != null);
     const lastCandle = candles[candles.length - 1];
     const price = hasLiveQuote ? (liveQuote!.bid! + liveQuote!.ask!) / 2 : lastCandle.close;
@@ -190,8 +225,9 @@ export async function GET(request: NextRequest) {
       mode: hasLiveQuote ? "live" as const : "closed" as const,
       updatedAt: hasLiveQuote && liveQuote?.timestamp ? new Date(Number(liveQuote.timestamp)).toISOString() : lastCandle.time,
       candles,
+      history: { requestedBars: historyBars, returnedBars: candles.length, pages: history.pages, oldestCandle: candles[0]?.time ?? null, newestCandle: lastCandle?.time ?? null },
       volumeType: "tick" as const,
-      dataNote: "All prices and historical OHLC candles are sourced exclusively from the connected cTrader account. Candle volume is broker-reported tick volume, not verified executed volume. Spot quotes are not aggressor-side trades; footprint buy/sell values remain estimates.",
+      dataNote: `All prices and historical OHLC candles are sourced exclusively from the connected cTrader account. ${["10min", "1week", "1month"].includes(interval) ? `${interval} OHLC candles are aggregated from ${sourceInterval} broker candles. ` : ""}Candle volume is broker-reported tick volume, not verified executed volume. Spot quotes are not aggressor-side trades; footprint buy/sell values remain estimates.` ,
     };
 
     const response = NextResponse.json({
