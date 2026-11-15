@@ -139,15 +139,6 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
     try { localStorage.setItem(validationStorageKey, JSON.stringify(validationSnapshots)); } catch { /* Storage may be unavailable or full. */ }
   },[validationSnapshots,validationPrices]);
 
-  useEffect(() => {
-    if (!forecast || loading || error || (model.decision !== "BUY" && model.decision !== "SELL") || !forecast.data.latestCandle) return;
-    const next: UnifiedDecisionSnapshot = {
-      asset: asset as "XAU/USD" | "XAG/USD", timeframe: interval,
-      signalTime: forecast.data.latestCandle, price: forecast.currentPrice, direction: model.decision,
-    };
-    setValidationSnapshots(previous => appendUnifiedDecisionSnapshot(previous, next));
-  },[forecast,loading,error,model.decision,asset,interval]);
-
   const unifiedBias = useMemo(() => {
     const frames = forecast?.multiTimeframe.filter(frame=>frame.status==="available" && frame.trend!=="range" && frame.trend!=="unclear") || [];
     const bullish = frames.filter(frame=>frame.trend==="bullish").length;
@@ -219,6 +210,15 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
     if (compositeConflict) conflicts.push(`The weighted market bias is ${unifiedBias.bias}, opposing the selected-timeframe ${base} setup; final decision is WAIT.`);
     return {decision,rows,reasons,conflicts,agreement,opposition,unifiedBias};
   },[forecast,liquidity,flow,entry,context,asset,selected,higher,interval,unifiedBias]);
+
+  useEffect(() => {
+    if (!forecast || loading || error || (model.decision !== "BUY" && model.decision !== "SELL") || !forecast.data.latestCandle) return;
+    const next: UnifiedDecisionSnapshot = {
+      asset: asset as "XAU/USD" | "XAG/USD", timeframe: interval,
+      signalTime: forecast.data.latestCandle, price: forecast.currentPrice, direction: model.decision,
+    };
+    setValidationSnapshots(previous => appendUnifiedDecisionSnapshot(previous, next));
+  },[forecast,loading,error,model.decision,asset,interval]);
 
   const digits = asset === "XAU/USD" ? 2 : 3;
   const decision = loading ? "WAIT" : model.decision;
