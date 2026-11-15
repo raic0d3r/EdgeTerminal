@@ -21,6 +21,7 @@ import EconomicCalendar from "@/components/economic-calendar";
 import NewsCenter, { NewsTicker } from "@/components/news-center";
 import MasterConfluenceEngine from "@/components/master-confluence-engine";
 import MasterScorecard from "@/components/master-scorecard";
+import UnifiedTradingDecision from "@/components/unified-trading-decision";
 import TradeJournal from "@/components/trade-journal";
 import MarketIntelligence from "@/components/market-intelligence";
 import FeatureSuggestions from "@/components/feature-suggestions";
@@ -613,6 +614,7 @@ function Dashboard() {
           </div>
         </section>
 
+        <UnifiedTradingDecision asset={asset} interval={tf} broker={activeBroker} />
 
         <div className={`dashboard-orderflow-section ${orderFlowOpen ? "is-open" : ""}`} id="order-flow-footprint">
             <button

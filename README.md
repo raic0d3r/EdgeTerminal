@@ -235,3 +235,19 @@ The Entry Quality Research study now includes three pre-declared sweep-quality f
 
 ## v44 Universal Push Notifications
 See `PUSH-NOTIFICATIONS-v44.md` for VAPID setup, platform requirements, and the explicit background market-monitor limitation.
+
+## Unified Trading Decision Engine — module integration
+
+The central decision panel now consumes the existing Market Intelligence forecast and liquidity map, the selected broker's lower-timeframe candles, the existing `/api/market-context` feeds, and the existing Order Flow absorption endpoint. It displays contributions from:
+
+- Technical structure and the selected timeframe confirmation engine.
+- Higher- and lower-timeframe context, including a lower-timeframe breakout check.
+- Liquidity sweeps, candle-derived supply/demand zones, and broker tick-volume direction proxy.
+- CFTC managed-money positioning, retail positioning when a validated provider is connected, and FRED macro direction when configured.
+- Historical pattern outcomes, walk-forward out-of-sample statistics, and the conditional/active risk plan.
+
+The weighted market-context composite reuses `calculateUnifiedBias` and its configured weights (technical/multi-timeframe 40%, CFTC 20%, retail 15%, macro 25%). Missing sources are excluded and active weights are renormalized. A weighted bias opposing the selected-timeframe setup forces WAIT. BUY/SELL additionally requires a confirmed selected-timeframe setup, a matching lower-timeframe breakout confirmation, and an active risk plan.
+
+Verified aggressor-side spot order-flow is not currently supplied by the broker feed. The absorption endpoint is queried, but its candidates are not treated as a directional BUY/SELL vote. Broker tick volume remains explicitly labelled as a candle-volume proxy. No automatic order execution is added.
+
+Contract tests: `node --test scripts/market-intelligence/unified-decision-contract.test.cjs`.
