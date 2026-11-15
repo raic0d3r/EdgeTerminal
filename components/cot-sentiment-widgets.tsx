@@ -31,7 +31,7 @@ export default function CotSentimentWidgets({ asset, theme = "dark" }: Props) {
     window.addEventListener("message", handleResize);
 	return () => window.removeEventListener("message", handleResize);
 	}, []);
-    if (asset === "BTC/USD") return <div className="cot-widgets-stack"><div className="cot-guide-copy">COT and retail-positioning widgets are not configured for this BTC/USD spot/CFD feed. These sources are excluded from the Unified Trading Decision rather than inferred from metals data.</div></div>;
+    if (asset === "BTC/USD") return <div className="cot-widgets-stack"><div className="cot-guide-copy">Bitcoin institutional positioning is sourced separately from the official CFTC Traders in Financial Futures report for CME Bitcoin futures (contract 133741), using the Leveraged Funds category. It is weekly futures positioning, not live BTC/USD spot/CFD positioning. Retail BTC positioning remains unavailable unless a verified provider feed is connected.</div></div>;
     return (
     <div className="cot-widgets-stack">
       <div className="cot-guide">

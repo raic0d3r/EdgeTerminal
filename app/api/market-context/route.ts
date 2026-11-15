@@ -103,6 +103,70 @@ async function getCot(asset: "XAU/USD" | "XAG/USD") {
   };
 }
 
+/** Bitcoin CME futures use the CFTC Traders in Financial Futures (TFF) report.
+ * This is deliberately separate from the Disaggregated/Managed Money series used for metals.
+ * Contract 133741 is standard CME Bitcoin futures (not Micro Bitcoin 133742).
+ */
+async function getCotBitcoin() {
+  const fields = [
+    "report_date_as_yyyy_mm_dd", "market_and_exchange_names", "open_interest_all",
+    "lev_money_positions_long_all", "lev_money_positions_short_all",
+    "asset_mgr_positions_long_all", "asset_mgr_positions_short_all",
+    "dealer_positions_long_all", "dealer_positions_short_all",
+  ];
+  const params = new URLSearchParams({
+    "$select": fields.join(","),
+    "$where": "cftc_contract_market_code='133741'",
+    "$order": "report_date_as_yyyy_mm_dd DESC",
+    "$limit": "60",
+  });
+  const response = await fetch(`https://publicreporting.cftc.gov/resource/gpe5-46if.json?${params}`, {
+    next: { revalidate: 3600 }, signal: AbortSignal.timeout(10000),
+  });
+  if (!response.ok) throw new Error(`CFTC TFF returned HTTP ${response.status}`);
+  const rows = await response.json() as CotRow[];
+  const usable = rows.map(row => ({
+    date: String(row.report_date_as_yyyy_mm_dd || "").slice(0, 10),
+    openInterest: num(row.open_interest_all),
+    leveragedLong: num(row.lev_money_positions_long_all),
+    leveragedShort: num(row.lev_money_positions_short_all),
+    assetManagerLong: num(row.asset_mgr_positions_long_all),
+    assetManagerShort: num(row.asset_mgr_positions_short_all),
+    dealerLong: num(row.dealer_positions_long_all),
+    dealerShort: num(row.dealer_positions_short_all),
+  })).filter(row => row.date && row.openInterest != null && row.leveragedLong != null && row.leveragedShort != null);
+  if (!usable.length) throw new Error("No verified CME Bitcoin futures TFF records were returned.");
+  const latest = usable[0];
+  const previous = usable[1];
+  const net = latest.leveragedLong! - latest.leveragedShort!;
+  const previousNet = previous ? previous.leveragedLong! - previous.leveragedShort! : null;
+  const weeklyChange = previousNet == null ? null : net - previousNet;
+  const recentNet = usable.slice(0, 52).map(row => row.leveragedLong! - row.leveragedShort!);
+  const percentile = recentNet.length > 1
+    ? Math.round((recentNet.filter(value => value <= net).length / recentNet.length) * 100)
+    : null;
+  return {
+    status: "connected",
+    bias: biasFromDelta(weeklyChange, 0),
+    netContracts: net,
+    weeklyChange,
+    percentile52w: percentile,
+    openInterest: latest.openInterest,
+    reportDate: latest.date,
+    market: "BITCOIN - CHICAGO MERCANTILE EXCHANGE",
+    reportCategory: "Leveraged Funds",
+    leveragedLong: latest.leveragedLong,
+    leveragedShort: latest.leveragedShort,
+    assetManagerNet: latest.assetManagerLong != null && latest.assetManagerShort != null
+      ? latest.assetManagerLong - latest.assetManagerShort : null,
+    dealerNet: latest.dealerLong != null && latest.dealerShort != null
+      ? latest.dealerLong - latest.dealerShort : null,
+    source: "CFTC Traders in Financial Futures · Futures Only · CME Bitcoin 133741",
+    freshness: "Weekly; positions are as of Tuesday and normally published Friday",
+    detail: "Bitcoin institutional positioning uses CME standard Bitcoin futures (CFTC 133741), TFF Leveraged Funds. This is futures positioning, not the BTC/USD spot/CFD market's own positioning.",
+  };
+}
+
 async function getFundamentals() {
   const apiKey = process.env.FRED_API_KEY;
   if (!apiKey) return {
@@ -187,9 +251,14 @@ export async function GET(request: NextRequest) {
   const asset = (request.nextUrl.searchParams.get("asset") || "XAU/USD").toUpperCase();
   if (asset !== "XAU/USD" && asset !== "XAG/USD" && asset !== "BTC/USD") return NextResponse.json({ error: "Supported assets are XAU/USD, XAG/USD and BTC/USD." }, { status: 400 });
   const [cotResult, fundamentalsResult, sentmoResult] = await Promise.allSettled([
-    (asset === "XAU/USD" || asset === "XAG/USD") ? getCot(asset) : Promise.resolve(null), getFundamentals(), asset === "XAU/USD" ? getSentmoGold() : Promise.resolve(null),
+    asset === "BTC/USD" ? getCotBitcoin() : getCot(asset as "XAU/USD" | "XAG/USD"),
+    getFundamentals(),
+    asset === "XAU/USD" ? getSentmoGold() : Promise.resolve(null),
   ]);
-  const cot = asset === "BTC/USD" ? { status: "unavailable", bias: "Neutral", detail: "COT futures positioning is not mapped to this BTC/USD spot/CFD instrument." } : cotResult.status === "fulfilled" ? cotResult.value : { status: "unavailable", bias: "Neutral", detail: cotResult.reason instanceof Error ? cotResult.reason.message : "CFTC data unavailable." };
+  const cot = cotResult.status === "fulfilled" ? cotResult.value : {
+    status: "unavailable", bias: "Neutral",
+    detail: cotResult.reason instanceof Error ? cotResult.reason.message : "CFTC data unavailable.",
+  };
   const fundamentals = fundamentalsResult.status === "fulfilled" ? fundamentalsResult.value : { status: "unavailable", bias: "Neutral", detail: fundamentalsResult.reason instanceof Error ? fundamentalsResult.reason.message : "FRED data unavailable." };
   const retailSentiment = asset === "XAU/USD"
     ? sentmoResult.status === "fulfilled" && sentmoResult.value
