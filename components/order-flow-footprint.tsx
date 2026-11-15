@@ -20,6 +20,21 @@ type AbsorptionResponse = { status: string; dataNote?: string; candidateCount?: 
 function fmt(n: number, digits = 2) { return n.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits }); }
 function timeLabel(value: string) { const d = new Date(value); return Number.isNaN(d.getTime()) ? value.slice(-5) : d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false }); }
 
+function getFootprintSymbol(asset: string): "XAU/USD" | "XAG/USD" | "BTC/USD" {
+  const normalized = asset.toUpperCase().replace(/[^A-Z]/g, "");
+  if (normalized.includes("BTC")) return "BTC/USD";
+  if (normalized.includes("XAG") || normalized.includes("SILVER")) return "XAG/USD";
+  return "XAU/USD";
+}
+function getFootprintLabel(asset: string): string {
+  const symbol = getFootprintSymbol(asset);
+  return symbol.replace("/", "");
+}
+function getFootprintAssetName(asset: string): string {
+  const symbol = getFootprintSymbol(asset);
+  return symbol === "BTC/USD" ? "BITCOIN" : symbol === "XAG/USD" ? "SILVER" : "GOLD";
+}
+
 export default function OrderFlowFootprint({ asset = "XAU/USD", interval = "5min" }: { asset?: string; interval?: string }) {
   const [candles, setCandles] = useState<Candle[]>([]);
   const [price, setPrice] = useState<number | null>(null);
@@ -122,7 +137,7 @@ export default function OrderFlowFootprint({ asset = "XAU/USD", interval = "5min
     let alive = true;
     const load = async () => {
       try {
-        const symbol = asset.includes("XAG") ? "XAG/USD" : "XAU/USD";
+        const symbol = getFootprintSymbol(asset);
         const res = await fetchMarketData(marketApiUrl(symbol, interval), { cache: "no-store" });
         const json: ApiQuote = await res.json();
         if (!alive) return;
@@ -153,13 +168,13 @@ export default function OrderFlowFootprint({ asset = "XAU/USD", interval = "5min
     const loadAbsorption = async () => {
       setAbsorptionStatus("loading");
       try {
-        if (asset === "BTC/USD") {
+        if (getFootprintSymbol(asset) === "BTC/USD") {
           setAbsorptionCandidates([]);
           setAbsorptionStatus("error");
           setAbsorptionNote("No verified BTC/USD aggressor-side trade-print feed is connected. Broker candle volume is not classified as buy/sell order flow.");
           return;
         }
-        const instrument = asset.includes("XAG") ? "SI" : "GC";
+        const instrument = getFootprintSymbol(asset) === "XAG/USD" ? "SI" : "GC";
         const user = auth?.currentUser;
         if (!user) throw new Error("Sign in to access Order Flow Footprint.");
         const token = await user.getIdToken();
@@ -201,8 +216,8 @@ export default function OrderFlowFootprint({ asset = "XAU/USD", interval = "5min
   const volume = current ? current.totalBuy + current.totalSell : 0;
   const delta = current?.delta || 0;
   const poc = price ?? current?.close ?? null;
-  const minPrice = bars.length ? Math.min(...bars.map(b => b.low)) : (price || 4000) - 4;
-  const maxPrice = bars.length ? Math.max(...bars.map(b => b.high)) : (price || 4000) + 4;
+  const minPrice = bars.length ? Math.min(...bars.map(b => b.low)) : (price ?? 0) - (getFootprintSymbol(asset) === "BTC/USD" ? 100 : 4);
+  const maxPrice = bars.length ? Math.max(...bars.map(b => b.high)) : (price ?? 0) + (getFootprintSymbol(asset) === "BTC/USD" ? 100 : 4);
   const range = Math.max(maxPrice - minPrice, 0.1);
   const priceLevels = Array.from({ length: rows }, (_, i) => maxPrice - (range * i / (rows - 1)));
   const lastCandle = current;
@@ -264,7 +279,7 @@ export default function OrderFlowFootprint({ asset = "XAU/USD", interval = "5min
     const generatedAt = new Date().toLocaleString("en-GB", { timeZone: "Europe/London", dateStyle: "short", timeStyle: "medium" });
     reportWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Order Flow Footprint Audit</title><style>
       @page{size:A4 landscape;margin:8mm}*{box-sizing:border-box}body{margin:0;background:#10131a;color:#e7edf8;font:11px Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}.page{padding:10px 12px;border-top:5px solid #e5bc36}h1{font-size:23px;margin:0 0 5px}h2{font-size:12px;margin:0;padding:8px 10px;background:#242b3a;color:#fff;text-transform:uppercase;letter-spacing:.3px}.sub{color:#e6b52a;font-size:14px;margin-bottom:12px}.top{display:flex;justify-content:space-between;align-items:start;gap:15px;margin-bottom:10px}.stamp{background:#1b2230;border:1px solid #354158;padding:10px 12px;border-radius:7px;min-width:260px}.stamp b{color:#ffb000;font-size:13px}.stamp div{color:#9db0c9;margin-top:5px}.cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}.card{border:1px solid #354158;border-radius:7px;overflow:hidden;background:#171c26;min-height:105px}.body{padding:10px 12px;line-height:1.6}.label{color:#90a8c7}.gold{color:#ffb600;font-weight:bold}.red{color:#ff535b;font-weight:bold}.green{color:#00d69a;font-weight:bold}.muted{color:#8290a5}.tablewrap{margin-top:7px}table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:9px}th,td{border:1px solid #293244;padding:4px 3px;text-align:center;overflow-wrap:anywhere}thead th{background:#202736;font-size:9px;line-height:1.35}thead th:first-child{width:95px}.pinned{background:#332c18;color:#ffbd20}tbody th{background:#202633;color:#ffb000;text-align:right;white-space:nowrap}tbody td{background:#151923;color:#d8e0ef}.buy{background:#12372a;color:#35e4a0;font-weight:bold}.sell{background:#421e25;color:#ff7278;font-weight:bold}.poc{background:#3b3215;color:#ffdb61;font-weight:bold}.foot{margin-top:10px;color:#8491a4;font-size:9px;display:flex;justify-content:space-between;gap:10px}.note{margin-top:9px;border-top:1px solid #2c3444;padding-top:7px;color:#8f9db1;font-size:9px}@media print{body{background:#10131a}.page{padding:0}.card,table{break-inside:avoid}}
-      </style></head><body><main class="page"><div class="top"><div><h1>EDGE TERMINAL</h1><div class="sub">ORDER FLOW FOOTPRINT MICRO-STRUCTURE &amp; CONFLUENCE AUDIT</div></div><div class="stamp"><b>ASSET: ${esc(asset.includes("XAG") ? "SILVER" : "GOLD")} | TF: ${esc(interval.toUpperCase())}</b><div>${esc(generatedAt)} (UK Time)</div><div>Provider: ${esc(source || "Unavailable")} · ${esc(status)}</div></div></div>
+      </style></head><body><main class="page"><div class="top"><div><h1>EDGE TERMINAL</h1><div class="sub">ORDER FLOW FOOTPRINT MICRO-STRUCTURE &amp; CONFLUENCE AUDIT</div></div><div class="stamp"><b>ASSET: ${esc(getFootprintAssetName(asset))} | TF: ${esc(interval.toUpperCase())}</b><div>${esc(generatedAt)} (UK Time)</div><div>Provider: ${esc(source || "Unavailable")} · ${esc(status)}</div></div></div>
       <div class="cards"><section class="card"><h2>Pinned Candle Metadata</h2><div class="body"><span class="label">Time:</span> <b>${esc(pinned?.time)}</b> &nbsp;&nbsp; <span class="label">OHLC:</span> <b>${pinned ? `${fmt(pinned.open)} / ${fmt(pinned.high)} / ${fmt(pinned.low)} / ${fmt(pinned.close)}` : "—"}</b><br><span class="label">Total Vol:</span> <b>${(pinned?.totalBuy + pinned?.totalSell || 0).toLocaleString("en-US")}</b> &nbsp;&nbsp; <span class="label">Delta:</span> <b class="${(pinned?.delta || 0) < 0 ? "red" : "green"}">${(pinned?.delta || 0) > 0 ? "+" : ""}${pinned?.delta ?? 0} (${100 - buyPercent}% sell est.)</b><br><span class="label">POC Level:</span> <b class="gold">${poc === null ? "—" : "$" + fmt(poc)} (price proxy)</b><br><span class="label">Seq. Cumulative Delta:</span> <b class="${sequenceDelta < 0 ? "red" : "green"}">${sequenceDelta > 0 ? "+" : ""}${sequenceDelta}</b><br><span class="muted">(Sequence of ${reportBars.length} candles; estimated)</span></div></section>
       <section class="card"><h2>Imbalance &amp; Absorption Callouts</h2><div class="body">• <b>${divergence ? esc(divergence) : "No confirmed local delta divergence"}</b> on the pinned candle under the current estimated-data rule.<br>• <b>${imbalanceText}</b> price levels show a 3:1 diagonal buy/sell imbalance in the pinned candle (estimated).<br>• <span class="muted">Wick absorption is not confirmed by this candle-only feed.</span><br>• <span class="muted">Treat these as analytical estimates, not institutional trade prints.</span></div></section>
       <section class="card"><h2>Technical Confluence</h2><div class="body"><span class="label">Current price:</span> <b class="gold">${price === null ? "Unavailable" : "$" + fmt(price)}</b><br><span class="label">5-candle estimated delta:</span> <b class="${sequenceDelta < 0 ? "red" : "green"}">${sequenceDelta > 0 ? "+" : ""}${sequenceDelta}</b><br><span class="label">Estimated buy share:</span> <b>${buyPercent}%</b><br><span class="label">Bias:</span> <b class="${sequenceDelta < 0 ? "red" : "green"}">${sequenceDelta < 0 ? "SELLER LEAN (EST.)" : "BUYER LEAN (EST.)"}</b><br><span class="muted">RSI/MACD are omitted because this report uses the currently loaded candle window only.</span></div></section></div>
@@ -274,7 +289,8 @@ export default function OrderFlowFootprint({ asset = "XAU/USD", interval = "5min
   };
 
   return <section className={`ofp-shell ${expanded ? "ofp-expanded" : ""}`}>
-    <div className="ofp-toolbar"><div className="ofp-left-tools"><span className="ofp-symbol">{asset.includes("XAG") ? "XAGUSD" : "XAUUSD"}</span><span className="ofp-provider-control ofp-provider-fixed" aria-label="Market data provider"><span>DATA</span><b>{marketProvider === "exness" ? "Exness" : "cTrader"}</b></span><button type="button" className={`ofp-chip ofp-mode ${viewMode === "beginner" ? "selected" : ""}`} aria-pressed={viewMode === "beginner"} onClick={() => setViewMode("beginner")}><Activity size={12}/> Candles</button><button type="button" className={`ofp-chip ofp-pro ofp-mode ${viewMode === "pro" ? "selected" : ""}`} aria-pressed={viewMode === "pro"} onClick={() => setViewMode("pro")}>▰ Footprint</button><span className="ofp-chip ofp-time">◷ {updatedAt ? timeLabel(updatedAt) : "LIVE"}</span></div><div className="ofp-right-tools"><button onClick={() => { setZoom(100); if (chartWrapRef.current) chartWrapRef.current.scrollLeft = 0; }}><RotateCcw size={13}/> RESET</button><button aria-label="Zoom out" onClick={() => changeZoom(Math.max(50, zoom - 10))}><ZoomOut size={13}/></button><b>{zoom}%</b><button aria-label="Zoom in" onClick={() => changeZoom(Math.min(200, zoom + 10))}><ZoomIn size={13}/></button><button className={`ofp-signals ${showSignals ? "active" : ""}`} onClick={() => setShowSignals(v => !v)}><Signal size={13}/> Signals</button><button onClick={exportPdf}><Download size={13}/> Export PDF</button><button aria-label="Help" title="Beginner order flow cheat sheet" onClick={() => setShowHelp(true)}><CircleHelp size={15}/></button><button aria-label="Settings" title="Core footprint indicators" aria-expanded={showSettings} className={showSettings ? "ofp-settings-button active" : "ofp-settings-button"} onClick={() => setShowSettings(v => !v)}><Settings size={15}/></button><button aria-label="Toggle full chart" onClick={() => setExpanded(v => !v)}><Expand size={15}/></button></div>
+    {getFootprintSymbol(asset) === "BTC/USD" && <div className="ofp-data-warning" role="status">BTC/USD · Showing BTC-specific broker candles and a candle-volume estimate. No verified BTC aggressor-side trade-print feed is connected, so bid/ask footprint, delta and absorption are estimates—not exchange trade flow.</div>}
+    <div className="ofp-toolbar"><div className="ofp-left-tools"><span className="ofp-symbol">{getFootprintLabel(asset)}</span><span className="ofp-provider-control ofp-provider-fixed" aria-label="Market data provider"><span>DATA</span><b>{marketProvider === "exness" ? "Exness" : "cTrader"}</b></span><button type="button" className={`ofp-chip ofp-mode ${viewMode === "beginner" ? "selected" : ""}`} aria-pressed={viewMode === "beginner"} onClick={() => setViewMode("beginner")}><Activity size={12}/> Candles</button><button type="button" className={`ofp-chip ofp-pro ofp-mode ${viewMode === "pro" ? "selected" : ""}`} aria-pressed={viewMode === "pro"} onClick={() => setViewMode("pro")}>▰ Footprint</button><span className="ofp-chip ofp-time">◷ {updatedAt ? timeLabel(updatedAt) : "LIVE"}</span></div><div className="ofp-right-tools"><button onClick={() => { setZoom(100); if (chartWrapRef.current) chartWrapRef.current.scrollLeft = 0; }}><RotateCcw size={13}/> RESET</button><button aria-label="Zoom out" onClick={() => changeZoom(Math.max(50, zoom - 10))}><ZoomOut size={13}/></button><b>{zoom}%</b><button aria-label="Zoom in" onClick={() => changeZoom(Math.min(200, zoom + 10))}><ZoomIn size={13}/></button><button className={`ofp-signals ${showSignals ? "active" : ""}`} onClick={() => setShowSignals(v => !v)}><Signal size={13}/> Signals</button><button onClick={exportPdf}><Download size={13}/> Export PDF</button><button aria-label="Help" title="Beginner order flow cheat sheet" onClick={() => setShowHelp(true)}><CircleHelp size={15}/></button><button aria-label="Settings" title="Core footprint indicators" aria-expanded={showSettings} className={showSettings ? "ofp-settings-button active" : "ofp-settings-button"} onClick={() => setShowSettings(v => !v)}><Settings size={15}/></button><button aria-label="Toggle full chart" onClick={() => setExpanded(v => !v)}><Expand size={15}/></button></div>
       {showSettings && <div className="ofp-settings-menu" role="group" aria-label="Core footprint indicators">
         <strong>CORE FOOTPRINT INDICATORS</strong>
         {([
