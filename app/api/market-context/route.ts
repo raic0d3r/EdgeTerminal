@@ -110,9 +110,9 @@ async function getCot(asset: "XAU/USD" | "XAG/USD") {
 async function getCotBitcoin() {
   const fields = [
     "report_date_as_yyyy_mm_dd", "market_and_exchange_names", "open_interest_all",
-    "lev_money_positions_long", "lev_money_positions_short",
-    "asset_mgr_positions_long", "asset_mgr_positions_short",
-    "dealer_positions_long", "dealer_positions_short",
+    "lev_money_positions_long_all", "lev_money_positions_short_all",
+    "asset_mgr_positions_long_all", "asset_mgr_positions_short_all",
+    "dealer_positions_long_all", "dealer_positions_short_all",
   ];
   const params = new URLSearchParams({
     "$select": fields.join(","),
@@ -128,12 +128,12 @@ async function getCotBitcoin() {
   const usable = rows.map(row => ({
     date: String(row.report_date_as_yyyy_mm_dd || "").slice(0, 10),
     openInterest: num(row.open_interest_all),
-    leveragedLong: num(row.lev_money_positions_long),
-    leveragedShort: num(row.lev_money_positions_short),
-    assetManagerLong: num(row.asset_mgr_positions_long),
-    assetManagerShort: num(row.asset_mgr_positions_short),
-    dealerLong: num(row.dealer_positions_long),
-    dealerShort: num(row.dealer_positions_short),
+    leveragedLong: num(row.lev_money_positions_long_all),
+    leveragedShort: num(row.lev_money_positions_short_all),
+    assetManagerLong: num(row.asset_mgr_positions_long_all),
+    assetManagerShort: num(row.asset_mgr_positions_short_all),
+    dealerLong: num(row.dealer_positions_long_all),
+    dealerShort: num(row.dealer_positions_short_all),
   })).filter(row => row.date && row.openInterest != null && row.leveragedLong != null && row.leveragedShort != null);
   if (!usable.length) throw new Error("No verified CME Bitcoin futures TFF records were returned.");
   const latest = usable[0];
