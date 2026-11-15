@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { auth } from "@/lib/firebase";
 import { fetchMarketData } from "@/lib/market-selection";
 import { calculateUnifiedBias } from "@/lib/market-intelligence/unified-bias";
+import { appendUnifiedDecisionSnapshot, evaluateUnifiedDecisionPerformance, mergeValidationPrices, type UnifiedDecisionSnapshot, type ValidationPrice } from "@/lib/market-intelligence/unified-decision-validation";
 import { Activity, AlertTriangle, CheckCircle2, Clock3, RefreshCw, ShieldAlert } from "lucide-react";
 
 type Direction = "BUY" | "SELL" | "WAIT";
@@ -18,7 +19,9 @@ type Forecast = {
   liquidity: { sweep: string; explanation: string };
   zones: Array<{ type: string; low: number; high: number; distancePercent: number }>;
   historical: { samples: number; wins: number; losses: number; unresolved: number; winRate: number | null; averageR: number | null; methodology: string };
-  strategyBacktest: { sampleAdequacy: string; outOfSample: { trades: number; expectancyR: number | null; winRate: number | null; profitFactor: number | null } };
+  strategyBacktest: { trades: number; wins: number; losses: number; unresolved: number; winRate: number | null; expectancyR: number | null; profitFactor: number | null; maxDrawdownR: number; inSample: { trades: number; expectancyR: number | null; winRate: number | null }; outOfSample: { trades: number; wins: number; losses: number; unresolved: number; expectancyR: number | null; winRate: number | null; profitFactor: number | null; maxDrawdownR: number; startTime: string | null; endTime: string | null }; sampleAdequacy: string; methodology: string };
+  strategyByTimeframe: Array<{ timeframe: string; candles: number; trades: number; outOfSampleTrades: number; outOfSampleExpectancyR: number | null; outOfSampleWinRate: number | null; status: string }>;
+  strategyByInstrument: Array<{ symbol: string; candles: number; trades: number; outOfSampleTrades: number; outOfSampleExpectancyR: number | null; outOfSampleWinRate: number | null; status: string }>;
   riskPlan: { status: string; direction: Trend; entry: number | null; stop: number | null; targets: number[]; riskDistance: number | null; methodology: string };
   evidence: string[]; uncertainty: string[]; data: { source: string; mode: string; candles: number; latestCandle: string | null; note: string };
 };
@@ -63,8 +66,13 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
   const [loading,setLoading] = useState(true);
   const [error,setError] = useState("");
   const [updated,setUpdated] = useState("");
+  const [validationSnapshots,setValidationSnapshots] = useState<UnifiedDecisionSnapshot[]>([]);
+  const [validationPrices,setValidationPrices] = useState<Record<string,ValidationPrice[]>>({});
+  const [performance,setPerformance] = useState<ReturnType<typeof evaluateUnifiedDecisionPerformance>>([]);
   const [refreshKey,setRefreshKey] = useState(0);
   const mounted = useRef(true);
+  const validationStorageKey = "edge-terminal-unified-decision-validation-v1";
+  const pricesStorageKey = "edge-terminal-unified-decision-prices-v1";
   const selected = INTERVALS[interval.toLowerCase()] || "15min";
   const lower = LOWER[interval.toLowerCase()] || "5min";
   const higher = HIGHER[interval.toLowerCase()] || "4h";
@@ -91,6 +99,14 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
       let flowBody: FlowData | null = null;
       if (flowResponse?.ok) flowBody = await flowResponse.json();
       const contextBody: ContextResponse | null = contextResponse?.ok ? await contextResponse.json() : null;
+      const validationKey = `${asset}|${interval}`;
+      const incomingPrices: ValidationPrice[] = Array.isArray(miBody.validationPrices) ? miBody.validationPrices : [];
+      setValidationPrices(previous => {
+        const merged = mergeValidationPrices(previous[validationKey] || [], incomingPrices);
+        const next = { ...previous, [validationKey]: merged };
+        try { localStorage.setItem(pricesStorageKey, JSON.stringify(next)); } catch { /* Local cache is optional; no server data is changed. */ }
+        return next;
+      });
       if (!mounted.current) return;
       setForecast(miBody.forecast as Forecast);
       setLiquidity(miBody.liquidityMap as LiquidityMap || null);
@@ -105,7 +121,32 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
     } finally { if (mounted.current) setLoading(false); }
   },[asset,broker,selected,lower,refreshKey]);
 
-  useEffect(() => { mounted.current = true; void load(); const timer = window.setInterval(()=>void load(),60_000); return ()=>{mounted.current=false;window.clearInterval(timer);}; },[load]);
+  useEffect(() => {
+    mounted.current = true;
+    try {
+      const savedSnapshots = JSON.parse(localStorage.getItem(validationStorageKey) || "[]");
+      const savedPrices = JSON.parse(localStorage.getItem(pricesStorageKey) || "{}");
+      if (Array.isArray(savedSnapshots)) setValidationSnapshots(savedSnapshots);
+      if (savedPrices && typeof savedPrices === "object") setValidationPrices(savedPrices);
+    } catch { /* Corrupt browser-local validation data is ignored, never used as evidence. */ }
+    void load();
+    const timer = window.setInterval(()=>void load(),60_000);
+    return ()=>{mounted.current=false;window.clearInterval(timer);};
+  },[load]);
+
+  useEffect(() => {
+    setPerformance(evaluateUnifiedDecisionPerformance(validationSnapshots, validationPrices));
+    try { localStorage.setItem(validationStorageKey, JSON.stringify(validationSnapshots)); } catch { /* Storage may be unavailable or full. */ }
+  },[validationSnapshots,validationPrices]);
+
+  useEffect(() => {
+    if (!forecast || loading || error || (model.decision !== "BUY" && model.decision !== "SELL") || !forecast.data.latestCandle) return;
+    const next: UnifiedDecisionSnapshot = {
+      asset: asset as "XAU/USD" | "XAG/USD", timeframe: interval,
+      signalTime: forecast.data.latestCandle, price: forecast.currentPrice, direction: model.decision,
+    };
+    setValidationSnapshots(previous => appendUnifiedDecisionSnapshot(previous, next));
+  },[forecast,loading,error,model.decision,asset,interval]);
 
   const unifiedBias = useMemo(() => {
     const frames = forecast?.multiTimeframe.filter(frame=>frame.status==="available" && frame.trend!=="range" && frame.trend!=="unclear") || [];
@@ -189,6 +230,21 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
       <div className="utde-module-grid">{model.rows.map(row=><article className={`utde-module utde-${row.state}`} key={row.module}><div><b>{row.module}</b><strong>{row.signal}</strong></div><p>{row.detail}</p></article>)}</div>
       <div className="utde-section-title">WHY THIS DECISION?</div>
       <ul className="utde-reasons">{model.reasons.slice(0,6).map((reason,i)=><li key={`r-${i}`}><CheckCircle2 size={14}/>{reason}</li>)}{model.conflicts.map((reason,i)=><li className="warning" key={`c-${i}`}><AlertTriangle size={14}/>{reason}</li>)}{!model.conflicts.length&&<li><CheckCircle2 size={14}/>No directional conflict was detected in the currently available directional evidence.</li>}</ul>
+      {forecast && <div className="utde-validation">
+        <div className="utde-section-title">LIVE DECISION PERFORMANCE · PROSPECTIVE VALIDATION</div>
+        <p className="utde-validation-note">Only actual final BUY/SELL decisions are recorded. Outcomes use the next selected-timeframe candle close. Data is stored in this browser and separated by instrument and timeframe. This measures directional follow-through, not executable P&amp;L.</p>
+        {(() => { const current = performance.find(row => row.asset === asset && row.timeframe === interval); return <div className="utde-validation-summary">
+          <div><small>{asset} · {interval} ACCURACY</small><strong>{current?.accuracy == null ? "—" : `${current.accuracy.toFixed(1)}%`}</strong><span>{current?.matured ?? 0} matured · {current?.pending ?? 0} pending</span></div>
+          <div><small>AVG DIRECTIONAL RETURN</small><strong>{current?.averageSignedReturnPct == null ? "—" : `${current.averageSignedReturnPct.toFixed(3)}%`}</strong><span>BUY/SELL signed close-to-close return</span></div>
+          <div><small>CHRONOLOGICAL HOLDOUT</small><strong>{current?.validationAccuracy == null ? "—" : `${current.validationAccuracy.toFixed(1)}%`}</strong><span>{current?.validationSignals ?? 0} newest 30% matured signals</span></div>
+          <div><small>SAMPLE STATUS</small><strong>{(current?.status || "insufficient").toUpperCase()}</strong><span>{current?.matured ?? 0}/30 minimum directional outcomes</span></div>
+        </div>; })()}
+        <div className="utde-validation-table-wrap"><table className="utde-validation-table"><thead><tr><th>Instrument</th><th>Timeframe</th><th>Signals</th><th>Matured</th><th>Accuracy</th><th>Avg signed return</th><th>BUY / SELL accuracy</th><th>Status</th></tr></thead><tbody>
+          {performance.map(row=><tr key={`${row.asset}-${row.timeframe}`}><td>{row.asset}</td><td>{row.timeframe}</td><td>{row.signals}</td><td>{row.matured} ({row.flat} flat)</td><td>{row.accuracy==null?"—":`${row.accuracy.toFixed(1)}%`}</td><td>{row.averageSignedReturnPct==null?"—":`${row.averageSignedReturnPct.toFixed(3)}%`}</td><td>{row.buyAccuracy==null?"—":`${row.buyAccuracy.toFixed(1)}%`} / {row.sellAccuracy==null?"—":`${row.sellAccuracy.toFixed(1)}%`}</td><td>{row.status}</td></tr>)}
+          {!performance.length && <tr><td colSpan={8}>No confirmed BUY/SELL decisions have been recorded yet. WAIT decisions are not counted as trades.</td></tr>}
+        </tbody></table></div>
+        <p className="utde-validation-note">A result remains descriptive until at least 30 matured decisions exist for that instrument/timeframe. 100+ matured decisions are required before the panel labels a sample measured. No spread, slippage, commissions, stop-loss or take-profit execution is simulated. Browser-local history is not shared across devices.</p>
+      </div>}
       {forecast && <div className="utde-riskline"><b>Risk plan:</b> {forecast.riskPlan.status.toUpperCase()} · Entry {formatPrice(forecast.riskPlan.entry,digits)} · Stop {formatPrice(forecast.riskPlan.stop,digits)} · Targets {forecast.riskPlan.targets.map(x=>formatPrice(x,digits)).join(" / ")||"Unavailable"}</div>}
       <div className="utde-data-note"><ShieldAlert size={14}/><span>Data integrity: Unavailable COT, retail, macro and verified aggressor-side order-flow feeds are excluded from the weighted composite. Connected CFTC, retail and FRED readings contribute at their configured weights; available weights are renormalized. Broker tick volume is shown only as a candle-volume proxy. Historical results are measured from the returned broker history and are not a promise of future performance. No automatic execution.</span></div>
     </>}

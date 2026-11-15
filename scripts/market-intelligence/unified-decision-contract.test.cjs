@@ -38,3 +38,22 @@ test('Missing feeds are excluded and no automatic order execution is introduced'
   assert.match(source, /No automatic execution/);
   assert.doesNotMatch(source, /placeOrder|submitOrder|\/api\/trade/);
 });
+
+test('Unified decision performance validation records only final directional signals and groups by instrument/timeframe', () => {
+  const validation = fs.readFileSync(path.join(root, 'lib/market-intelligence/unified-decision-validation.ts'), 'utf8');
+  assert.match(validation, /appendUnifiedDecisionSnapshot/);
+  assert.match(validation, /evaluateUnifiedDecisionPerformance/);
+  assert.match(validation, /asset: string/);
+  assert.match(validation, /timeframe: string/);
+  assert.match(validation, /validationAccuracy/);
+  assert.match(validation, /BUY/);
+  assert.match(validation, /SELL/);
+  assert.match(source, /model\.decision !== "BUY" && model\.decision !== "SELL"/);
+  assert.match(source, /LIVE DECISION PERFORMANCE/);
+  assert.match(source, /localStorage/);
+});
+
+test('Market intelligence exposes historical close observations for prospective outcome matching', () => {
+  const route = fs.readFileSync(path.join(root, 'app/api/market-intelligence/route.ts'), 'utf8');
+  assert.match(route, /validationPrices: primary\.candles\.map/);
+});

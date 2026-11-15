@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
       higherTimeframeCandles, higherTimeframe, multiTimeframeCandles,
       comparisonCandles: comparisonResult?.candles || [],
     });
-    return NextResponse.json({ status: "ok", forecast, liquidityMap: analyzeLiquidity(primary.candles) }, { headers: { "Cache-Control": "private, no-store" } });
+    return NextResponse.json({ status: "ok", forecast, validationPrices: primary.candles.map(candle => ({ time: candle.time, close: candle.close })), liquidityMap: analyzeLiquidity(primary.candles) }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Market Intelligence analysis failed.";
     return NextResponse.json({ status: "unavailable", provider: broker, error: message }, { status: 502, headers: { "Cache-Control": "no-store" } });

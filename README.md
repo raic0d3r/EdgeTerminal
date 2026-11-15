@@ -251,3 +251,7 @@ The weighted market-context composite reuses `calculateUnifiedBias` and its conf
 Verified aggressor-side spot order-flow is not currently supplied by the broker feed. The absorption endpoint is queried, but its candidates are not treated as a directional BUY/SELL vote. Broker tick volume remains explicitly labelled as a candle-volume proxy. No automatic order execution is added.
 
 Contract tests: `node --test scripts/market-intelligence/unified-decision-contract.test.cjs`.
+
+## Unified Decision Engine performance validation
+
+The Unified Trading Decision panel now records confirmed BUY/SELL outcomes prospectively, separated by instrument and selected timeframe. Methodology, sample thresholds, browser-local storage behavior and limitations are documented in `docs/unified-decision-performance-validation.md`. This directional validation is separate from the Market Intelligence historical price-action backtest and is not an execution P&L simulation.
