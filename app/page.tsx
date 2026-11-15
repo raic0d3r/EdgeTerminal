@@ -196,7 +196,7 @@ function Dashboard() {
   const [stop, setStop] = useState("3985.38");
   const [notice, setNotice] = useState("");
   const [toolManagerOpen, setToolManagerOpen] = useState(false);
-  const [mainSidebarOpen, setMainSidebarOpen] = useState(true);
+  const [mainSidebarOpen, setMainSidebarOpen] = useState(false);
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
   const [vipAreaOpen, setVipAreaOpen] = useState(false);
   const [vipAccess, setVipAccess] = useState(false);
