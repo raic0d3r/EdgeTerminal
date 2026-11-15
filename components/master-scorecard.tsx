@@ -467,6 +467,10 @@ export default function MasterScorecard({ asset = "XAU/USD", interval = "15m", t
       <article className="msc-card"><div className="msc-card-head">TECHNICAL SUMMARY <Info size={13}/></div><div className="msc-summary-row"><span>{interval.toUpperCase()} trend</span><b className={`msc-pill msc-bias-underline ${(latestMove?.bias || "Neutral").toLowerCase()}`}>{latestMove?.bias || "Unavailable"}</b></div><div className="msc-summary-row"><span>RSI (14) · {interval.toUpperCase()}</span><b>{rsi == null ? "—" : `${fmt(rsi,1)} ${rsi >= 70 ? "· Overbought" : rsi <= 30 ? "· Oversold" : ""}`}</b></div><div className="msc-summary-row"><span>Timeframes loaded</span><b>{availableFrames.length}/5</b></div></article>
       <article className="msc-card"><div className="msc-card-head">INSTITUTIONAL POSITIONING <Info size={13}/></div>
         <div className="msc-summary-row"><span>COT positioning</span><b className={`msc-signal-value ${contextData?.cot?.status === "connected" ? `msc-bias-underline ${contextData.cot.bias.toLowerCase()}` : "msc-muted"}`}>{contextData?.cot?.status === "connected" ? contextData.cot.bias : contextData?.cot?.status === "unavailable" ? "Unavailable" : "Not connected"}</b></div>
+        {contextData?.cot?.status === "unavailable" && <div className="msc-cot-native" role="status">
+          <div className="msc-signal-detail">CFTC COT feed unavailable · source excluded from Master Bias</div>
+          <small className="msc-signal-detail">{contextData.cot.detail || "No CFTC response details were returned."}</small>
+        </div>}
         {contextData?.cot?.status === "connected" && <div className="msc-cot-native" role="status">
           <div className="msc-signal-detail">{asset === "BTC/USD" ? "CFTC CME Bitcoin Futures · TFF · Leveraged Funds" : "CFTC Disaggregated Futures Only · Managed Money"}</div>
           <div className="msc-summary-row"><span>{asset === "BTC/USD" ? "Leveraged Funds net" : "Managed Money net"}</span><b>{contextData.cot.netContracts?.toLocaleString() ?? "—"} contracts</b></div>

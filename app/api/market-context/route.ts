@@ -132,8 +132,8 @@ async function getCotBitcoin() {
     leveragedShort: num(row.lev_money_positions_short),
     assetManagerLong: num(row.asset_mgr_positions_long),
     assetManagerShort: num(row.asset_mgr_positions_short),
-    dealerLong: num(row.dealer_positions_long),
-    dealerShort: num(row.dealer_positions_short),
+    dealerLong: num(row.dealer_positions_long_all),
+    dealerShort: num(row.dealer_positions_short_all),
   })).filter(row => row.date && row.openInterest != null && row.leveragedLong != null && row.leveragedShort != null);
   if (!usable.length) throw new Error("No verified CME Bitcoin futures TFF records were returned.");
   const latest = usable[0];
