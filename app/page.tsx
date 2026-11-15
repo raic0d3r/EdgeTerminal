@@ -92,7 +92,7 @@ function isForexWeekend(now: Date) {
 
 
 function Dashboard() {
-  const [asset, setAsset] = useState<"XAU/USD" | "XAG/USD">("XAU/USD");
+  const [asset, setAsset] = useState<"XAU/USD" | "XAG/USD" | "BTC/USD">("XAU/USD");
   const [activeBroker, setActiveBroker] = useState<MarketBroker>("ctrader");
   useEffect(() => { const sync = () => setActiveBroker(getActiveMarketBroker()); sync(); window.addEventListener("edge-terminal-broker-change", sync); return () => window.removeEventListener("edge-terminal-broker-change", sync); }, []);
   const [tf, setTf] = useState("15m");
@@ -404,7 +404,7 @@ function Dashboard() {
   }, [positionPanelEnabled, chartMode]);
   const riskDollars = (Number(capital) || 0) * (Number(risk) || 0) / 100;
   const stopDistance = Math.abs((Number(entry) || 0) - (Number(stop) || 0));
-  const contractSize = asset === "XAG/USD" ? 5000 : 100;
+  const contractSize = asset === "XAG/USD" ? 5000 : asset === "BTC/USD" ? 1 : 100;
   const positionLots = stopDistance > 0 ? riskDollars / (stopDistance * contractSize) : 0;
   const positionUnits = positionLots * contractSize;
   const intervalMap: Record<string, string> = { "1m": "1", "5m": "5", "10m": "10", "15m": "15", "30m": "30", "1h": "60", "4h": "240", "1d": "D", "1w": "W", "1mo": "M" };
@@ -555,9 +555,10 @@ function Dashboard() {
               <option value="ctrader">cTrader</option><option value="exness">Exness</option>
             </select>
           </label>
-          <div className="gold-silver-switch">
-            <button className={asset==="XAU/USD"?"chosen":""} onClick={()=>{setAsset("XAU/USD");setEntry(asset==="XAG/USD"?"53.828":"3995.38");setStop(asset==="XAG/USD"?"53.328":"3985.38")}}>◆ XAU/USD</button>
-            <button className={asset==="XAG/USD"?"chosen":""} onClick={()=>{setAsset("XAG/USD");setEntry("53.828");setStop("53.328")}}>◆ XAG/USD</button>
+          <div className="gold-silver-switch" role="group" aria-label="Select trading instrument">
+            <button className={asset==="XAU/USD"?"chosen":""} aria-pressed={asset==="XAU/USD"} onClick={()=>{setAsset("XAU/USD");setEntry("3995.38");setStop("3985.38")}}>◆ XAU/USD</button>
+            <button className={asset==="XAG/USD"?"chosen":""} aria-pressed={asset==="XAG/USD"} onClick={()=>{setAsset("XAG/USD");setEntry("53.828");setStop("53.328")}}>◆ XAG/USD</button>
+            <button className={asset==="BTC/USD"?"chosen":""} aria-pressed={asset==="BTC/USD"} onClick={()=>{setAsset("BTC/USD");setEntry("");setStop("")}}>₿ BTC/USD</button>
           </div>
           <div className="compact-timeframes">{[["1m","1m"],["5m","5m"],["10m","10m"],["15m","15m"],["30m","30m"],["1h","1h"],["4h","4h"],["1d","1d"],["1w","1w"],["1mo","1M"]].map(([value,label])=><button key={value} className={tf.toLowerCase()===value.toLowerCase()?"chosen":""} onClick={()=>setAllChartTimeframes(value)}>{label}</button>)}</div>
         </div>
@@ -592,8 +593,8 @@ function Dashboard() {
           <div className={`chart-risk-grid mode-${chartMode}`}>
             <div className={`chart-layout-grid chart-layout-count-${chartLayoutCount}`}>
               {Array.from({length: chartLayoutCount}, (_, index) => <div className="chart-frame" key={`${chartLayoutCount}-${index}`}>
-                <div className="chart-symbolbar"><b>⌕ {asset==="XAU/USD"?"XAUUSD":"XAGUSD"}</b><span>＋</span><div className="chart-quick-tf" aria-label={`Timeframe for chart ${index+1}`}>{[["1m","1m"],["5m","5m"],["10m","10m"],["15m","15m"],["30m","30m"],["1h","1h"],["4h","4h"],["1d","1d"],["1w","1w"],["1mo","1M"]].map(([value,label])=><button type="button" key={value} aria-pressed={(chartTimeframes[index] || "15m").toLowerCase()===value.toLowerCase()} className={(chartTimeframes[index] || "15m").toLowerCase()===value.toLowerCase()?"chosen":""} onClick={()=>setAllChartTimeframes(value)}>{label}</button>)}</div><span className="chart-label">{chartLayoutCount>1?`Chart ${index+1}`:"TradingView chart"} · {chartTimeframes[index] || "15m"}</span></div>
-                <div className="chart-embed"><TradingViewChart symbol={asset==="XAU/USD"?"OANDA:XAUUSD":"OANDA:XAGUSD"} interval={intervalMap[chartTimeframes[index] || "15m"] || "15"} showTools={toolsVisible}/></div>
+                <div className="chart-symbolbar"><b>⌕ {asset==="XAU/USD"?"XAUUSD":asset==="XAG/USD"?"XAGUSD":"BTCUSD"}</b><span>＋</span><div className="chart-quick-tf" aria-label={`Timeframe for chart ${index+1}`}>{[["1m","1m"],["5m","5m"],["10m","10m"],["15m","15m"],["30m","30m"],["1h","1h"],["4h","4h"],["1d","1d"],["1w","1w"],["1mo","1M"]].map(([value,label])=><button type="button" key={value} aria-pressed={(chartTimeframes[index] || "15m").toLowerCase()===value.toLowerCase()} className={(chartTimeframes[index] || "15m").toLowerCase()===value.toLowerCase()?"chosen":""} onClick={()=>setAllChartTimeframes(value)}>{label}</button>)}</div><span className="chart-label">{chartLayoutCount>1?`Chart ${index+1}`:"TradingView chart"} · {chartTimeframes[index] || "15m"}</span></div>
+                <div className="chart-embed"><TradingViewChart symbol={asset==="XAU/USD"?"OANDA:XAUUSD":asset==="XAG/USD"?"OANDA:XAGUSD":"COINBASE:BTCUSD"} interval={intervalMap[chartTimeframes[index] || "15m"] || "15"} showTools={toolsVisible}/></div>
               </div>)}
             </div>
 
@@ -614,7 +615,9 @@ function Dashboard() {
           </div>
         </section>
 
-        <UnifiedTradingDecision asset={asset} interval={tf} broker={activeBroker} />
+        <FeatureGate title="Unified Trading Decision Engine">
+          <UnifiedTradingDecision asset={asset} interval={tf} broker={activeBroker} />
+        </FeatureGate>
 
         <div className={`dashboard-orderflow-section ${orderFlowOpen ? "is-open" : ""}`} id="order-flow-footprint">
             <button

@@ -153,6 +153,12 @@ export default function OrderFlowFootprint({ asset = "XAU/USD", interval = "5min
     const loadAbsorption = async () => {
       setAbsorptionStatus("loading");
       try {
+        if (asset === "BTC/USD") {
+          setAbsorptionCandidates([]);
+          setAbsorptionStatus("error");
+          setAbsorptionNote("No verified BTC/USD aggressor-side trade-print feed is connected. Broker candle volume is not classified as buy/sell order flow.");
+          return;
+        }
         const instrument = asset.includes("XAG") ? "SI" : "GC";
         const user = auth?.currentUser;
         if (!user) throw new Error("Sign in to access Order Flow Footprint.");

@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const ALLOWED_INTERVALS = new Set(["1min", "5min", "10min", "15min", "30min", "1h", "4h", "1day", "1week", "1month"]);
-const ALLOWED_SYMBOLS = new Set(["XAU/USD", "XAG/USD"]);
+const ALLOWED_SYMBOLS = new Set(["XAU/USD", "XAG/USD", "BTC/USD"]);
 
 type BrokerCandle = { time: string; open: number; high: number; low: number; close: number; volume?: number | null; volumeType?: "tick" };
 function aggregateBrokerCandles(candles: BrokerCandle[], interval: "10min" | "1week" | "1month"): BrokerCandle[] {
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ status: "unavailable", provider, error: "Unsupported market-data provider. Choose Exness or cTrader." }, { status: 400, headers: { "Cache-Control": "no-store" } });
   }
   if (provider === "exness") {
-    if (!ALLOWED_SYMBOLS.has(symbol)) return NextResponse.json({ status: "error", provider, error: "Only XAU/USD and XAG/USD are supported." }, { status: 400 });
+    if (!ALLOWED_SYMBOLS.has(symbol)) return NextResponse.json({ status: "error", provider, error: "Supported instruments are XAU/USD, XAG/USD and BTC/USD (subject to broker availability)." }, { status: 400 });
     if (!ALLOWED_INTERVALS.has(interval)) return NextResponse.json({ status: "error", provider, error: "Unsupported candle interval." }, { status: 400 });
     try {
       const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
     }
   }
   if (!ALLOWED_SYMBOLS.has(symbol)) {
-    return NextResponse.json({ status: "error", provider: "ctrader", error: "Only XAU/USD and XAG/USD are supported by the connected cTrader account." }, { status: 400 });
+    return NextResponse.json({ status: "error", provider: "ctrader", error: "Supported instruments are XAU/USD, XAG/USD and BTC/USD, subject to connected cTrader account availability." }, { status: 400 });
   }
   if (!ALLOWED_INTERVALS.has(interval)) {
     return NextResponse.json({ status: "error", provider: "ctrader", error: "Unsupported candle interval." }, { status: 400 });
@@ -185,7 +185,7 @@ export async function GET(request: NextRequest) {
         clientId,
         clientSecret,
         accessToken: session.accessToken,
-        symbol: symbol as "XAU/USD" | "XAG/USD",
+        symbol: symbol as "XAU/USD" | "XAG/USD" | "BTC/USD",
         interval: sourceInterval,
         limit: historyBars,
       }),
@@ -193,7 +193,7 @@ export async function GET(request: NextRequest) {
     if (historyResult.status === "rejected") throw historyResult.reason;
     const history = historyResult.value;
     const probe = probeResult.status === "fulfilled" ? probeResult.value : null;
-    const wanted = symbol === "XAG/USD" ? "XAGUSD" : "XAUUSD";
+    const wanted = symbol === "XAG/USD" ? "XAGUSD" : symbol === "BTC/USD" ? "BTCUSD" : "XAUUSD";
     const liveQuote = probe?.quotes.find((item) => item.requested === wanted && item.spotEventReceived);
 
     const sourceCandles = history.candles.map((bar) => ({

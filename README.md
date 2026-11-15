@@ -255,3 +255,15 @@ Contract tests: `node --test scripts/market-intelligence/unified-decision-contra
 ## Unified Decision Engine performance validation
 
 The Unified Trading Decision panel now records confirmed BUY/SELL outcomes prospectively, separated by instrument and selected timeframe. Methodology, sample thresholds, browser-local storage behavior and limitations are documented in `docs/unified-decision-performance-validation.md`. This directional validation is separate from the Market Intelligence historical price-action backtest and is not an execution P&L simulation.
+
+
+## BTC/USD instrument support
+
+BTC/USD is available in the global instrument selector alongside XAU/USD and XAG/USD.
+The TradingView chart uses Coinbase BTCUSD for the visual chart. Unified analysis and
+broker-backed candles use the currently selected cTrader or Exness connection and
+will only return data if that broker account exposes a BTCUSD instrument.
+
+BTC/USD does not reuse metals-only COT, retail-sentiment, or futures absorption data.
+Those modules are marked unavailable unless a verified BTC-specific provider is added.
+No synthetic BTC prices or automatic trade execution are introduced.

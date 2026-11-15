@@ -1,6 +1,6 @@
 export type UnifiedDecisionDirection = "BUY" | "SELL";
 export type UnifiedDecisionSnapshot = {
-  asset: "XAU/USD" | "XAG/USD";
+  asset: "XAU/USD" | "XAG/USD" | "BTC/USD";
   timeframe: string;
   signalTime: string;
   price: number;

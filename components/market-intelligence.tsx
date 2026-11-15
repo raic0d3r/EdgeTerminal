@@ -5,7 +5,7 @@ import { auth } from "@/lib/firebase";
 import type { MarketForecast } from "@/lib/market-intelligence/engine";
 import { Activity, AlertTriangle, Clock3, RefreshCw, ShieldCheck, Target, Waves } from "lucide-react";
 
-type Props = { asset: "XAU/USD" | "XAG/USD"; interval: string; broker: "ctrader" | "exness" };
+type Props = { asset: "XAU/USD" | "XAG/USD" | "BTC/USD"; interval: string; broker: "ctrader" | "exness" };
 type LiquidityMap = { equalHighs: number[]; equalLows: number[]; pools: Array<{ side: string; level: number; touches: number; distancePercent: number; strength: string }>; fairValueGaps: Array<{ direction: string; low: number; high: number; time: string; strength: number; status: string; distancePercent: number }>; orderBlocks: Array<{ direction: string; low: number; high: number; time: string; status: string; displacementRatio: number }>; sweepEvents: Array<{ side: string; level: number; time: string; confirmed: boolean; quality: string }>; displacement: string; displacementRatio: number; sweep: string; brokerVolume: { available: boolean; latest: number | null; median: number | null; relative: number | null; directionalBias: string }; note: string };
 type FlowEvidence = { candidateCount: number; storedTradeCount: number; providerStatus: string; dataNote: string; candidates: Array<{ type: string; price: number; strength: string; evidence: string }> };
 
@@ -42,10 +42,10 @@ export default function MarketIntelligence({ asset, interval, broker }: Props) {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         }),
-        fetch(`/api/orderflow/absorption?instrument=${asset === "XAU/USD" ? "GC" : "SI"}`, {
+        (asset === "BTC/USD" ? Promise.resolve(null) : fetch(`/api/orderflow/absorption?instrument=${asset === "XAU/USD" ? "GC" : "SI"}`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
-        }).catch(() => null),
+        }).catch(() => null)),
       ]);
       const body = await response.json();
       if (!response.ok || !body.forecast) throw new Error(body.error || "Market analysis is unavailable.");
@@ -76,7 +76,7 @@ export default function MarketIntelligence({ asset, interval, broker }: Props) {
 
   useEffect(() => { void load(); }, [load]);
 
-  const digits = asset === "XAU/USD" ? 2 : 3;
+  const digits = asset === "BTC/USD" ? 2 : asset === "XAU/USD" ? 2 : 3;
   // A browser can briefly receive a stale API payload while Next.js recompiles
   // after an upgrade. Treat newly-added research fields as optional so one
   // missing field cannot crash the whole dashboard.

@@ -8,9 +8,10 @@ import { analyzeLiquidity } from "@/lib/market-intelligence/liquidity-analysis";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SYMBOLS: Record<string, "XAU/USD" | "XAG/USD"> = {
+const SYMBOLS: Record<string, "XAU/USD" | "XAG/USD" | "BTC/USD"> = {
   XAUUSD: "XAU/USD", "XAU/USD": "XAU/USD",
   XAGUSD: "XAG/USD", "XAG/USD": "XAG/USD",
+  BTCUSD: "BTC/USD", "BTC/USD": "BTC/USD",
 };
 const INTERVALS = new Set(["1min", "5min", "10min", "15min", "30min", "1h", "4h", "1day", "1week", "1month"]);
 
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
   const symbol = SYMBOLS[rawSymbol];
   const broker = (params.get("provider") || "ctrader").toLowerCase();
   const timeframe = params.get("interval") || "15min";
-  if (!symbol) return NextResponse.json({ status: "error", error: "Supported symbols are XAU/USD and XAG/USD." }, { status: 400 });
+  if (!symbol) return NextResponse.json({ status: "error", error: "Supported symbols are XAU/USD, XAG/USD and BTC/USD (subject to broker availability)." }, { status: 400 });
   if (broker !== "ctrader" && broker !== "exness") return NextResponse.json({ status: "error", error: "Choose cTrader or Exness." }, { status: 400 });
   if (!INTERVALS.has(timeframe)) return NextResponse.json({ status: "error", error: "Unsupported candle interval." }, { status: 400 });
 
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest) {
     if (authorization) headers.set("authorization", authorization);
     if (cookie) headers.set("cookie", cookie);
 
-    const loadCandles = async (interval: string, marketSymbol: "XAU/USD" | "XAG/USD" = symbol, historyBars = 500) => {
+    const loadCandles = async (interval: string, marketSymbol: "XAU/USD" | "XAG/USD" | "BTC/USD" = symbol, historyBars = 500) => {
       const sourceInterval = interval === "10min" ? "5min" : interval === "1week" || interval === "1month" ? "1day" : interval;
       const marketUrl = new URL("/api/market", request.url);
       marketUrl.searchParams.set("symbol", marketSymbol);

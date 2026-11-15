@@ -26,7 +26,7 @@ const money = (value: number) => value.toLocaleString("en-US", { minimumFraction
 export default function TradeJournal({ asset, interval }: { asset: string; interval: string }) {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [ready, setReady] = useState(false);
-  const [form, setForm] = useState({ asset: asset === "XAG/USD" ? "SILVER" : "GOLD", side: "Long" as TradeSide, entryPrice: "3995.38", sizeLots: "1.0", emotion: "Neutral", session: "New York", notes: "" });
+  const [form, setForm] = useState({ asset: asset === "XAG/USD" ? "SILVER" : asset === "BTC/USD" ? "BTCUSD" : "GOLD", side: "Long" as TradeSide, entryPrice: asset === "BTC/USD" ? "" : asset === "XAG/USD" ? "53.828" : "3995.38", sizeLots: "1.0", emotion: "Neutral", session: "New York", notes: "" });
   const [insights, setInsights] = useState("");
   const [insightBusy, setInsightBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -55,7 +55,7 @@ export default function TradeJournal({ asset, interval }: { asset: string; inter
   }, [trades, ready]);
 
   useEffect(() => {
-    setForm((old) => ({ ...old, asset: asset === "XAG/USD" ? "SILVER" : "GOLD", entryPrice: asset === "XAG/USD" ? "53.828" : old.entryPrice === "53.828" ? "3995.38" : old.entryPrice }));
+    setForm((old) => ({ ...old, asset: asset === "XAG/USD" ? "SILVER" : asset === "BTC/USD" ? "BTCUSD" : "GOLD", entryPrice: asset === "BTC/USD" ? "" : asset === "XAG/USD" ? "53.828" : old.entryPrice === "53.828" ? "3995.38" : old.entryPrice }));
   }, [asset]);
 
   const stats = useMemo(() => {

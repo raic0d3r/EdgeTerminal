@@ -31,6 +31,7 @@ export default function CotSentimentWidgets({ asset, theme = "dark" }: Props) {
     window.addEventListener("message", handleResize);
 	return () => window.removeEventListener("message", handleResize);
 	}, []);
+    if (asset === "BTC/USD") return <div className="cot-widgets-stack"><div className="cot-guide-copy">COT and retail-positioning widgets are not configured for this BTC/USD spot/CFD feed. These sources are excluded from the Unified Trading Decision rather than inferred from metals data.</div></div>;
     return (
     <div className="cot-widgets-stack">
       <div className="cot-guide">

@@ -8,7 +8,7 @@ export type MarketCandle = {
 };
 
 export type MarketQuote = {
-  symbol: "XAU/USD" | "XAG/USD";
+  symbol: "XAU/USD" | "XAG/USD" | "BTC/USD";
   price: number | null;
   change: number | null;
   changePercent: number | null;
@@ -20,7 +20,7 @@ export type MarketQuote = {
   dataNote?: string;
 };
 
-const SYMBOLS = new Set(["XAU/USD", "XAG/USD"]);
+const SYMBOLS = new Set(["XAU/USD", "XAG/USD", "BTC/USD"]);
 
 function numberOrNull(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
@@ -76,6 +76,7 @@ async function getBiquote(
   symbol: MarketQuote["symbol"],
   interval: string,
 ): Promise<MarketQuote> {
+  if (symbol === "BTC/USD") throw new Error("BTC/USD requires a connected broker feed; metal-only spot fallback providers are not used for crypto.");
   const ticker = symbol === "XAU/USD" ? "XAUUSD" : "XAGUSD";
 
   const quote = await fetchJson(
@@ -144,7 +145,7 @@ async function getXaus(
   );
 
   const price = numberOrNull(
-    symbol === "XAU/USD" ? data.spot_usd_oz : data.silver_usd_oz,
+    symbol === "XAU/USD" ? data.spot_usd_oz : symbol === "XAG/USD" ? data.silver_usd_oz : null,
   );
 
   if (price === null) {

@@ -5,7 +5,7 @@ import { getActiveMarketBroker, type MarketBroker } from "@/lib/market-selection
 import { getIdToken } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
-type Props = { symbol: "XAU/USD" | "XAG/USD"; entry: string; stop: string; capital: string; risk: string; lots: number };
+type Props = { symbol: "XAU/USD" | "XAG/USD" | "BTC/USD"; entry: string; stop: string; capital: string; risk: string; lots: number };
 type Tab = "ticket" | "positions" | "history";
 
 function formatHistoryMoney(value: unknown) {

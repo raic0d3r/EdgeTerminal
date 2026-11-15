@@ -50,7 +50,7 @@ function candleSide(v: any): CandleSide | null {
 export async function getExnessCandles(credentials: ExnessCredentials, symbol: string, interval: string, limit = 300) {
   const tf = TIMEFRAMES[interval];
   if (!tf) throw new Error(`Unsupported Exness timeframe: ${interval}`);
-  const requestedInstrument = symbol === "XAU/USD" ? "XAUUSD" : symbol === "XAG/USD" ? "XAGUSD" : "";
+  const requestedInstrument = symbol === "XAU/USD" ? "XAUUSD" : symbol === "XAG/USD" ? "XAGUSD" : symbol === "BTC/USD" ? "BTCUSD" : "";
   if (!requestedInstrument) throw new Error("Unsupported Exness instrument.");
   const accountKey = `${credentials.accountId}:${credentials.accessPoint || credentials.gatewayUrl || "gateway"}`;
   const candleKey = `${accountKey}:${requestedInstrument}:${interval}:${limit}`;
@@ -133,7 +133,7 @@ export async function getExnessCandles(credentials: ExnessCredentials, symbol: s
 }
 
 export async function getExnessLiveTick(credentials: ExnessCredentials, symbol: string, timeoutMs = 2500) {
-  const instrument = symbol === "XAU/USD" ? "XAUUSD" : symbol === "XAG/USD" ? "XAGUSD" : "";
+  const instrument = symbol === "XAU/USD" ? "XAUUSD" : symbol === "XAG/USD" ? "XAGUSD" : symbol === "BTC/USD" ? "BTCUSD" : "";
   if (!instrument) throw new Error("Unsupported Exness instrument.");
   const path = `/v1/server-events/accounts/${credentials.accountId}/ws/ticks`;
   // Live ticks also belong to the account Access Point, not the discovery host.

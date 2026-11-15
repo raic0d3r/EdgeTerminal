@@ -10,7 +10,7 @@ export type CTraderCandle = { time: number; open: number; high: number; low: num
 
 export async function getFpMarketsCandles(input: {
   clientId: string; clientSecret: string; accessToken: string;
-  symbol: "XAU/USD" | "XAG/USD"; interval: string; limit?: number;
+  symbol: "XAU/USD" | "XAG/USD" | "BTC/USD"; interval: string; limit?: number;
 }): Promise<{ symbol: string; interval: string; candles: CTraderCandle[]; broker: string; pages: number; requestedBars: number; hasMore: boolean }> {
   const period = PERIODS[input.interval];
   if (!period) throw new Error(`Unsupported cTrader candle interval: ${input.interval}`);
@@ -52,7 +52,7 @@ export async function getFpMarketsCandles(input: {
     await request(2102, { ctidTraderAccountId: accountId, accessToken: input.accessToken }, 2103);
     const symbolsRes = await request(2114, { ctidTraderAccountId: accountId }, 2115);
     const symbols = Array.isArray(symbolsRes.payload?.symbol) ? symbolsRes.payload!.symbol as Record<string, unknown>[] : [];
-    const target = input.symbol === "XAG/USD" ? "XAGUSD" : "XAUUSD";
+    const target = input.symbol === "XAG/USD" ? "XAGUSD" : input.symbol === "BTC/USD" ? "BTCUSD" : "XAUUSD";
     const symbol = symbols.find(s => {
       const name = asString(s.symbolName).toUpperCase();
       return name === target || name.startsWith(`${target}.`) || name.startsWith(`${target}_`) || name.startsWith(`${target}-`);

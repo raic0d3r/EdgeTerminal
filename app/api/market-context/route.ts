@@ -185,16 +185,18 @@ async function getFundamentals() {
 
 export async function GET(request: NextRequest) {
   const asset = (request.nextUrl.searchParams.get("asset") || "XAU/USD").toUpperCase();
-  if (asset !== "XAU/USD" && asset !== "XAG/USD") return NextResponse.json({ error: "Only XAU/USD and XAG/USD are supported." }, { status: 400 });
+  if (asset !== "XAU/USD" && asset !== "XAG/USD" && asset !== "BTC/USD") return NextResponse.json({ error: "Supported assets are XAU/USD, XAG/USD and BTC/USD." }, { status: 400 });
   const [cotResult, fundamentalsResult, sentmoResult] = await Promise.allSettled([
-    getCot(asset), getFundamentals(), asset === "XAU/USD" ? getSentmoGold() : Promise.resolve(null),
+    (asset === "XAU/USD" || asset === "XAG/USD") ? getCot(asset) : Promise.resolve(null), getFundamentals(), asset === "XAU/USD" ? getSentmoGold() : Promise.resolve(null),
   ]);
-  const cot = cotResult.status === "fulfilled" ? cotResult.value : { status: "unavailable", bias: "Neutral", detail: cotResult.reason instanceof Error ? cotResult.reason.message : "CFTC data unavailable." };
+  const cot = asset === "BTC/USD" ? { status: "unavailable", bias: "Neutral", detail: "COT futures positioning is not mapped to this BTC/USD spot/CFD instrument." } : cotResult.status === "fulfilled" ? cotResult.value : { status: "unavailable", bias: "Neutral", detail: cotResult.reason instanceof Error ? cotResult.reason.message : "CFTC data unavailable." };
   const fundamentals = fundamentalsResult.status === "fulfilled" ? fundamentalsResult.value : { status: "unavailable", bias: "Neutral", detail: fundamentalsResult.reason instanceof Error ? fundamentalsResult.reason.message : "FRED data unavailable." };
   const retailSentiment = asset === "XAU/USD"
     ? sentmoResult.status === "fulfilled" && sentmoResult.value
       ? sentmoResult.value
       : { status: "unavailable", bias: "Neutral" as const, provider: "Sentmo", source: "Sentmo public Gold positioning API", detail: sentmoResult.status === "rejected" ? (sentmoResult.reason instanceof Error ? sentmoResult.reason.message : "Sentmo data unavailable.") : "Sentmo data unavailable." }
-    : { status: "external_only", bias: "Neutral" as const, provider: "TradeLytics", source: "TradeLytics public XAGUSD composite sentiment dashboard", detail: "TradeLytics composite sentiment is not a verified retail long/short ratio. No public import endpoint is configured; values are not included in Master Bias." };
+    : asset === "XAG/USD"
+      ? { status: "external_only", bias: "Neutral" as const, provider: "TradeLytics", source: "TradeLytics public XAGUSD composite sentiment dashboard", detail: "TradeLytics composite sentiment is not a verified retail long/short ratio. No public import endpoint is configured; values are not included in Master Bias." }
+      : { status: "unavailable", bias: "Neutral" as const, provider: "Not configured", source: "BTC/USD retail positioning", detail: "No verified BTC/USD retail long/short positioning feed is configured." };
   return NextResponse.json({ asset, updatedAt: new Date().toISOString(), cot, retailSentiment, fundamentals }, { headers: { "Cache-Control": "no-store" } });
 }

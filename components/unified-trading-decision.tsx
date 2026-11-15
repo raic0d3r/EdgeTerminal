@@ -89,7 +89,7 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
       const [miResponse, lowerResponse, flowResponse, contextResponse] = await Promise.all([
         fetch(`/api/market-intelligence?${query}`,{headers:{Authorization:`Bearer ${token}`},cache:"no-store"}),
         fetchMarketData(`/api/market?${lowerQuery.toString()}`,{cache:"no-store"}),
-        fetch(`/api/orderflow/absorption?instrument=${asset === "XAU/USD" ? "GC" : "SI"}`,{headers:{Authorization:`Bearer ${token}`},cache:"no-store"}).catch(()=>null),
+        (asset === "BTC/USD" ? Promise.resolve(null) : fetch(`/api/orderflow/absorption?instrument=${asset === "XAU/USD" ? "GC" : "SI"}`,{headers:{Authorization:`Bearer ${token}`},cache:"no-store"}).catch(()=>null)),
         fetch(`/api/market-context?asset=${encodeURIComponent(asset)}`,{cache:"no-store"}).catch(()=>null),
       ]);
       const miBody = await miResponse.json();
@@ -173,7 +173,7 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
     rows.push({module:"Liquidity",signal:sweepSignal,detail:forecast.liquidity.explanation,state:sweepSignal===base&&base!=="WAIT"?"support":sweepSignal!=="WAIT"&&base!=="WAIT"?"oppose":"neutral"});
     const volumeSignal = liquidity?.brokerVolume?.directionalBias === "buyer-leaning" ? "BUY" : liquidity?.brokerVolume?.directionalBias === "seller-leaning" ? "SELL" : "WAIT";
     rows.push({module:"Volume pressure (tick-volume proxy)",signal:volumeSignal,detail:liquidity?.brokerVolume?.available?`Broker tick-volume candle proxy · relative activity ${liquidity.brokerVolume.relative?.toFixed(2) ?? "—"}×`:"No usable broker volume data.",state:volumeSignal===base&&base!=="WAIT"?"support":volumeSignal!=="WAIT"&&base!=="WAIT"?"oppose":"missing"});
-    rows.push({module:"Support / resistance",signal:"LEVELS",detail:forecast.zones.length?forecast.zones.slice(0,2).map(z=>`${z.type} ${formatPrice(z.low,asset==="XAU/USD"?2:3)}–${formatPrice(z.high,asset==="XAU/USD"?2:3)} (${z.distancePercent}% away)`).join(" · "):"No qualifying supply/demand zone detected.",state:forecast.zones.length?"neutral":"missing"});
+    rows.push({module:"Support / resistance",signal:"LEVELS",detail:forecast.zones.length?forecast.zones.slice(0,2).map(z=>`${z.type} ${formatPrice(z.low,asset==="BTC/USD"?2:asset==="XAU/USD"?2:3)}–${formatPrice(z.high,asset==="BTC/USD"?2:asset==="XAU/USD"?2:3)} (${z.distancePercent}% away)`).join(" · "):"No qualifying supply/demand zone detected.",state:forecast.zones.length?"neutral":"missing"});
     const flowCount = Number(flow?.candidateCount || 0);
     rows.push({module:"Order Flow",signal:flowCount>0?"OBSERVATIONS":"UNAVAILABLE",detail:flow?.dataNote || "No verified broker spot trade-print feed is connected. OHLC/tick volume is not aggressor-side order flow.",state:"missing"});
     const cot = context?.cot;
@@ -193,7 +193,7 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
     const hist = forecast.historical;
     const oos = forecast.strategyBacktest.outOfSample;
     rows.push({module:"Historical validation",signal:hist.samples>=5&&hist.winRate!=null?`${hist.winRate}% historical`:`${hist.samples} samples`,detail:`Pattern sample: ${hist.wins} wins · ${hist.losses} losses · ${hist.unresolved} unresolved. Walk-forward holdout: ${oos.trades} trades · ${oos.winRate==null?"win rate n/a":`${oos.winRate}% wins`} · ${oos.expectancyR==null?"expectancy n/a":`${oos.expectancyR}R`}. ${forecast.strategyBacktest.sampleAdequacy} sample; context only, not a directional vote.`,state:hist.samples>=5?"neutral":"missing"});
-    rows.push({module:"Dynamic risk plan",signal:forecast.riskPlan.status.toUpperCase(),detail:`Entry ${formatPrice(forecast.riskPlan.entry,asset==="XAU/USD"?2:3)} · SL ${formatPrice(forecast.riskPlan.stop,asset==="XAU/USD"?2:3)} · Targets ${forecast.riskPlan.targets.map(x=>formatPrice(x,asset==="XAU/USD"?2:3)).join(" / ")||"—"}`,state:forecast.riskPlan.status==="active"?"support":forecast.riskPlan.status==="conditional"?"neutral":"missing"});
+    rows.push({module:"Dynamic risk plan",signal:forecast.riskPlan.status.toUpperCase(),detail:`Entry ${formatPrice(forecast.riskPlan.entry,asset==="BTC/USD"?2:asset==="XAU/USD"?2:3)} · SL ${formatPrice(forecast.riskPlan.stop,asset==="BTC/USD"?2:asset==="XAU/USD"?2:3)} · Targets ${forecast.riskPlan.targets.map(x=>formatPrice(x,asset==="BTC/USD"?2:asset==="XAU/USD"?2:3)).join(" / ")||"—"}`,state:forecast.riskPlan.status==="active"?"support":forecast.riskPlan.status==="conditional"?"neutral":"missing"});
 
     const directionalRows = rows.filter(r=>r.signal==="BUY"||r.signal==="SELL");
     const agreement = directionalRows.filter(r=>r.signal===base&&base!=="WAIT").length;
@@ -214,13 +214,13 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
   useEffect(() => {
     if (!forecast || loading || error || (model.decision !== "BUY" && model.decision !== "SELL") || !forecast.data.latestCandle) return;
     const next: UnifiedDecisionSnapshot = {
-      asset: asset as "XAU/USD" | "XAG/USD", timeframe: interval,
+      asset: asset as "XAU/USD" | "XAG/USD" | "BTC/USD", timeframe: interval,
       signalTime: forecast.data.latestCandle, price: forecast.currentPrice, direction: model.decision,
     };
     setValidationSnapshots(previous => appendUnifiedDecisionSnapshot(previous, next));
   },[forecast,loading,error,model.decision,asset,interval]);
 
-  const digits = asset === "XAU/USD" ? 2 : 3;
+  const digits = asset === "BTC/USD" ? 2 : asset === "XAU/USD" ? 2 : 3;
   const decision = loading ? "WAIT" : model.decision;
   return <section className="utde-panel" aria-label="Unified Trading Decision Engine">
     <div className="utde-head"><div><span className="utde-kicker"><Activity size={13}/> EDGE TERMINAL · UNIFIED DECISION</span><h2>Unified Trading Decision Engine</h2><p>{asset} · Selected: {interval} · Context: {higher} · Entry check: {lowerLabel} · {broker.toUpperCase()}</p></div><div className="utde-head-actions"><button type="button" className="utde-refresh" onClick={()=>setRefreshKey(v=>v+1)} disabled={loading} aria-label="Refresh unified decision"><RefreshCw size={14}/></button><span className={`utde-badge ${decision.toLowerCase()}`}>{loading?"ANALYSING":decision}</span></div></div>
