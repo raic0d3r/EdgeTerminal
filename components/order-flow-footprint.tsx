@@ -40,7 +40,7 @@ export default function OrderFlowFootprint({ asset = "XAU/USD", interval = "5min
   const [price, setPrice] = useState<number | null>(null);
   const [source, setSource] = useState("");
   const [marketProvider, setMarketProvider] = useState<"ctrader" | "exness">("ctrader");
-  useEffect(() => { const sync = () => setMarketProvider(getActiveMarketBroker()); sync(); window.addEventListener("edge-terminal-broker-change", sync); return () => window.removeEventListener("edge-terminal-broker-change", sync); }, []);
+  useEffect(() => { const sync = () => setMarketProvider(getActiveMarketBroker(asset)); sync(); window.addEventListener("edge-terminal-broker-change", sync); return () => window.removeEventListener("edge-terminal-broker-change", sync); }, [asset]);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [status, setStatus] = useState("loading");
   const [absorptionCandidates, setAbsorptionCandidates] = useState<AbsorptionCandidate[]>([]);

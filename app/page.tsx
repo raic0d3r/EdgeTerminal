@@ -555,11 +555,23 @@ function Dashboard() {
               <option value="ctrader">cTrader</option><option value="exness">Exness</option>
             </select>
           </label>
-          <div className="gold-silver-switch" role="group" aria-label="Select trading instrument">
-            <button className={asset==="XAU/USD"?"chosen":""} aria-pressed={asset==="XAU/USD"} onClick={()=>{setAsset("XAU/USD");setEntry("3995.38");setStop("3985.38")}}>◆ XAU/USD</button>
-            <button className={asset==="XAG/USD"?"chosen":""} aria-pressed={asset==="XAG/USD"} onClick={()=>{setAsset("XAG/USD");setEntry("53.828");setStop("53.328")}}>◆ XAG/USD</button>
-            <button className={asset==="BTC/USD"?"chosen":""} aria-pressed={asset==="BTC/USD"} onClick={()=>{setAsset("BTC/USD");setEntry("");setStop("")}}>₿ BTC/USD</button>
-          </div>
+          <label className="instrument-selector" aria-label="Select trading instrument">
+            <span className="instrument-selector-label">MARKET</span>
+            <select
+              value={asset}
+              onChange={event => {
+                const next = event.target.value as "XAU/USD" | "XAG/USD" | "BTC/USD";
+                setAsset(next);
+                if (next === "XAU/USD") { setEntry("3995.38"); setStop("3985.38"); }
+                else if (next === "XAG/USD") { setEntry("53.828"); setStop("53.328"); }
+                else { setEntry(""); setStop(""); }
+              }}
+            >
+              <option value="XAU/USD">◆ XAU/USD · Gold</option>
+              <option value="XAG/USD">◆ XAG/USD · Silver</option>
+              <option value="BTC/USD">₿ BTC/USD · Bitcoin</option>
+            </select>
+          </label>
           <div className="compact-timeframes">{[["1m","1m"],["5m","5m"],["10m","10m"],["15m","15m"],["30m","30m"],["1h","1h"],["4h","4h"],["1d","1d"],["1w","1w"],["1mo","1M"]].map(([value,label])=><button key={value} className={tf.toLowerCase()===value.toLowerCase()?"chosen":""} onClick={()=>setAllChartTimeframes(value)}>{label}</button>)}</div>
         </div>
         <div className={`toolbar-current-price ${toolbarQuote?.changePercent == null ? "price-no-change" : toolbarQuote.changePercent >= 0 ? "price-up" : "price-down"}`} title={toolbarQuote ? `Source: ${toolbarQuote.source}${toolbarQuote.updatedAt ? ` · Updated ${new Date(toolbarQuote.updatedAt).toLocaleTimeString()}` : ""}` : "Waiting for market quote"} aria-live="polite">

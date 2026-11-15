@@ -59,11 +59,11 @@ export default function LiveTradingPanel({ symbol, entry, stop, capital, risk, l
   }, []);
 
   useEffect(() => {
-    const syncBroker = () => setBroker(getActiveMarketBroker());
+    const syncBroker = () => setBroker(getActiveMarketBroker(symbol));
     syncBroker();
     window.addEventListener("edge-terminal-broker-change", syncBroker);
     return () => window.removeEventListener("edge-terminal-broker-change", syncBroker);
-  }, []);
+  }, [symbol]);
 
   useEffect(() => {
     let active = true;
