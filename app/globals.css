@@ -2354,3 +2354,10 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
 .edge-drawing-toolbar button{width:32px;height:34px;border:1px solid transparent;border-radius:5px;background:transparent;color:#c5ccd6;font-size:19px;cursor:pointer;line-height:1}
 .edge-drawing-toolbar button:hover,.edge-drawing-toolbar button.active{background:#292d35;border-color:#d9a52e;color:#ffc54a}
 .edge-chart-canvas{flex:1;min-width:0}
+
+.edge-drawing-toolbar{width:42px;flex:0 0 42px;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 4px;border-right:1px solid #30343d;background:#15171c}
+.edge-drawing-toolbar button{width:32px;height:32px;border:1px solid transparent;border-radius:6px;background:transparent;color:#c7ccd5;font-size:19px;line-height:1;cursor:pointer}
+.edge-drawing-toolbar button:hover,.edge-drawing-toolbar button.selected{background:#292e37;border-color:#e0a52e;color:#ffbd36}
+.edge-chart-canvas-wrap{min-height:320px}
+.edge-chart-canvas{min-width:0;flex:1}
+@media(max-width:600px){.edge-drawing-toolbar{width:36px;flex-basis:36px}.edge-drawing-toolbar button{width:30px;height:30px}}
