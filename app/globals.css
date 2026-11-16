@@ -2282,3 +2282,51 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
     grid-column: auto;
   }
 }
+
+
+/* EdgeTerminal native chart + limited Pine conversion studio */
+.chart-engine-switch{display:flex;gap:6px;justify-content:flex-end;padding:8px 12px 0}
+.chart-engine-switch button{border:1px solid #343943;background:#17191e;color:#aeb4c0;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.chart-engine-switch button.selected{background:#ffb000;color:#151515;border-color:#ffb000}
+.edge-chart-studio{width:100%;height:100%;min-width:0;background:#111317;color:#eef0f4;display:flex;flex-direction:column;overflow:auto}
+.edge-chart-studio-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid #30343d;flex-wrap:wrap}
+.edge-chart-studio-toolbar>div:first-child{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.edge-chart-studio-toolbar small{color:#9299a6;font-size:11px}
+.edge-chart-beta{font-size:9px;font-weight:800;color:#ffb000;border:1px solid #72520b;border-radius:5px;padding:3px 5px}
+.edge-chart-actions{display:flex;gap:7px;flex-wrap:wrap}
+.edge-chart-actions button,.edge-chart-indicators button,.edge-pine-controls button,.edge-pine-saved button{border:1px solid #39404b;background:#20242b;color:#e8ebf0;border-radius:7px;padding:7px 10px;font-size:11px;cursor:pointer}
+.edge-chart-actions button:disabled{opacity:.55}
+.edge-chart-indicators{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:9px 14px;border-bottom:1px solid #30343d}
+.edge-chart-indicators>span{font-size:10px;color:#858d9b;font-weight:800;letter-spacing:.1em;margin-right:5px}
+.edge-chart-indicators button.active{border-color:#d79a13;color:#ffc247;background:#33280f}
+.edge-chart-indicators button.pine-indicator{border-color:#4779bd;color:#8bbcff}
+.edge-chart-status{padding:7px 14px;color:#9099a7;font-size:11px}
+.edge-chart-canvas-wrap{width:100%;min-height:260px;flex:1;overflow:hidden}
+.edge-chart-canvas{display:block;width:100%;height:100%;min-height:300px}
+.edge-chart-empty{min-height:280px;display:grid;place-items:center;padding:30px;color:#a3a9b4;text-align:center}
+.edge-chart-footer{display:flex;justify-content:space-between;gap:10px;padding:8px 14px;border-top:1px solid #30343d;color:#858d9b;font-size:10px;flex-wrap:wrap}
+.edge-pine-studio{border-top:1px solid #39404b;padding:14px;display:flex;flex-direction:column;gap:10px}
+.edge-pine-heading{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.edge-pine-heading>div{display:flex;flex-direction:column;gap:4px}
+.edge-pine-heading small,.edge-pine-disclaimer{font-size:11px;color:#9299a6;line-height:1.5}
+.edge-pine-heading>span{font-size:9px;color:#ffbf45;border:1px solid #72520b;border-radius:5px;padding:4px 6px}
+.edge-pine-studio textarea{width:100%;min-height:170px;resize:vertical;background:#090b0e;color:#d9e3f2;border:1px solid #3a4350;border-radius:8px;padding:12px;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre;overflow:auto}
+.edge-pine-controls{display:flex;gap:8px;flex-wrap:wrap}
+.edge-pine-controls button:first-child{background:#ffb000;color:#171717;border-color:#ffb000;font-weight:800}
+.edge-pine-controls button.secondary{background:#20242b;color:#e8ebf0;border-color:#39404b}
+.edge-pine-error,.edge-pine-success{font-size:11px;margin:0;padding:9px;border-radius:6px}
+.edge-pine-error{color:#ff8b96;background:#351c22}
+.edge-pine-success{color:#67e2b8;background:#102b24}
+.edge-pine-saved{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:11px}
+.edge-pine-disclaimer{margin:0}
+@media(max-width:700px){
+ .chart-engine-switch{justify-content:stretch;padding:8px 8px 0}
+ .chart-engine-switch button{flex:1}
+ .edge-chart-studio-toolbar{align-items:flex-start;padding:10px}
+ .edge-chart-actions{width:100%}
+ .edge-chart-actions button{flex:1}
+ .edge-chart-canvas{min-height:260px}
+ .edge-chart-indicators{padding:8px;gap:5px}
+ .edge-chart-indicators button{font-size:10px;padding:6px 7px}
+ .edge-chart-footer{font-size:9px}
+}
