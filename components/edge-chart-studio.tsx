@@ -60,6 +60,9 @@ function parsePine(source: string): { plots: PinePlot[]; error: string | null } 
 
 export default function EdgeChartStudio({ symbol, interval, provider }: { symbol: string; interval: string; provider: "ctrader" | "exness" }) {
   const [candles, setCandles] = useState<Candle[]>([]);
+  const [livePrice, setLivePrice] = useState<number | null>(null);
+  const [quoteMode, setQuoteMode] = useState("waiting");
+  const [lastUpdate, setLastUpdate] = useState<string | null>(null);
   const [status, setStatus] = useState("Loading broker candles…");
   const [busy, setBusy] = useState(false);
   const [active, setActive] = useState<Indicator[]>(PRESETS.slice(0, 2));
@@ -86,44 +89,66 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
       );
       if (!rows.length) throw new Error("No verified candles were returned by the selected broker.");
       setCandles(rows);
-      setStatus(`${body.provider || provider} · ${rows.length} broker candles · ${body.status || "data"} · ${body.data?.volumeType || "volume type unverified"}`);
+      const price = Number(body?.data?.price);
+      setLivePrice(Number.isFinite(price) && price > 0 ? price : rows.at(-1)?.close ?? null);
+      setQuoteMode(body?.data?.mode || body?.status || "unknown");
+      setLastUpdate(body?.data?.updatedAt || new Date().toISOString());
+      setStatus(`${body.provider || provider} · ${rows.length} broker candles · ${body.status || "data"} · ${body?.data?.mode === "live" ? "LIVE QUOTE" : "LAST CLOSE"}`);
     } catch (e) {
       setCandles([]);
       setStatus(e instanceof Error ? e.message : "Unable to load broker data.");
     } finally { setBusy(false); }
   }
 
-  useEffect(() => { void load(); }, [symbol, interval, provider]);
+  useEffect(() => {
+    let active = true;
+    void load();
+    // Poll the selected broker quote and candle history. A live quote updates
+    // the forming candle visually; no synthetic market prices are generated.
+    const timer = window.setInterval(() => { if (active) void load(); }, 5000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [symbol, interval, provider]);
   useEffect(() => {
     try { setSavedScripts(JSON.parse(localStorage.getItem("edge-chart-pine-scripts") || "[]")); } catch { setSavedScripts([]); }
   }, []);
 
+  const visibleCandles = useMemo(() => candles.slice(-140), [candles]);
+  const displayCandles = useMemo(() => {
+    if (!visibleCandles.length || livePrice == null || quoteMode !== "live") return visibleCandles;
+    const next = [...visibleCandles];
+    const last = { ...next[next.length - 1] };
+    last.high = Math.max(last.high, livePrice);
+    last.low = Math.min(last.low, livePrice);
+    last.close = livePrice;
+    next[next.length - 1] = last;
+    return next;
+  }, [visibleCandles, livePrice, quoteMode]);
   const closes = useMemo(() => candles.map(c => Number(c.close)), [candles]);
-  // Derive the visible scale from the actual broker candle range.
-  // Do not seed the minimum with zero: that compresses positive-price
-  // instruments (for example XAUUSD) against the top of the chart.
+  const visibleStart = Math.max(0, candles.length - displayCandles.length);
   const priceRange = useMemo(() => {
-    const valid = candles.filter(c =>
-      Number.isFinite(c.high) && Number.isFinite(c.low) &&
-      Number.isFinite(c.open) && Number.isFinite(c.close) &&
-      c.high >= c.low
-    );
-    if (!valid.length) return { min: 0, max: 1 };
-    const low = valid.reduce((v, c) => Math.min(v, c.low), Number.POSITIVE_INFINITY);
-    const high = valid.reduce((v, c) => Math.max(v, c.high), Number.NEGATIVE_INFINITY);
-    const rawSpan = high - low;
-    const pad = rawSpan > 0 ? rawSpan * 0.08 : Math.max(Math.abs(high) * 0.001, 0.01);
-    return { min: low - pad, max: high + pad };
-  }, [candles]);
+    if (!displayCandles.length) return { min: 0, max: 1 };
+    const lows = displayCandles.map(c => c.low);
+    const highs = displayCandles.map(c => c.high);
+    if (livePrice != null) { lows.push(livePrice); highs.push(livePrice); }
+    const low = Math.min(...lows), high = Math.max(...highs);
+    const span = Math.max(high - low, Math.abs(high) * 0.0005, 0.01);
+    return { min: low - span * 0.08, max: high + span * 0.08 };
+  }, [displayCandles, livePrice]);
   const minPrice = priceRange.min, maxPrice = priceRange.max;
-  const x = (i: number) => 20 + (i / Math.max(1, candles.length - 1)) * 940;
-  const y = (v: number) => 20 + ((maxPrice - v) / (maxPrice - minPrice)) * 420;
+  const chartTop = 24, chartBottom = 390, chartLeft = 18, chartRight = 900;
+  const x = (i: number) => chartLeft + (i / Math.max(1, displayCandles.length - 1)) * (chartRight-chartLeft);
+  const y = (v: number) => chartTop + ((maxPrice - v) / (maxPrice - minPrice)) * (chartBottom-chartTop);
   const series = (kind: "ema" | "sma", period: number) => average(closes, period, kind === "ema");
   const paths = useMemo(() => active.map(ind => {
-    const values = series(ind.kind, ind.period);
-    const d = values.map((v, i) => v == null ? "" : `${i === values.findIndex(a => a != null) ? "M" : "L"} ${x(i).toFixed(2)} ${y(v).toFixed(2)}`).filter(Boolean).join(" ");
+    const values = series(ind.kind, ind.period).slice(visibleStart);
+    let started = false;
+    const d = values.map((v, i) => {
+      if (v == null) return "";
+      const command = started ? "L" : "M"; started = true;
+      return `${command} ${x(i).toFixed(2)} ${y(v).toFixed(2)}`;
+    }).filter(Boolean).join(" ");
     return { ...ind, d };
-  }), [active, candles, minPrice, maxPrice]);
+  }), [active, candles, visibleStart, minPrice, maxPrice, displayCandles.length]);
 
   function applyPine() {
     const result = parsePine(script);
@@ -156,20 +181,23 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
       {PRESETS.map(item => <button type="button" key={item.id} className={active.some(a => a.id === item.id) ? "active" : ""} onClick={() => setActive(current => current.some(a => a.id === item.id) ? current.filter(a => a.id !== item.id) : [...current, item])}>{item.name}</button>)}
       {active.filter(a => a.source === "pine").map(a => <button type="button" key={a.id} className="active pine-indicator" onClick={() => setActive(current => current.filter(v => v.id !== a.id))}>{a.name} ×</button>)}
     </div>
-    <div className="edge-chart-status">{status}</div>
+    <div className="edge-chart-status"><span className={quoteMode === "live" ? "edge-live-dot" : "edge-stale-dot"}/> {status} · {quoteMode === "live" ? "Live broker quote · 5s refresh" : "Broker last close · waiting for live quote"}{lastUpdate ? ` · ${new Date(lastUpdate).toLocaleTimeString()}` : ""}</div>
     {candles.length > 0 ? <div className="edge-chart-canvas-wrap">
-      <svg className="edge-chart-canvas" viewBox="0 0 1000 480" role="img" aria-label={`${symbol} ${interval} candlestick chart with enabled indicators`}>
-        {[0,1,2,3,4].map(i => <g key={i}><line x1="20" x2="960" y1={20+i*105} y2={20+i*105} stroke="#34363d" strokeDasharray="3 5"/><text x="968" y={24+i*105} fill="#9297a3" fontSize="11">{(maxPrice-(i/4)*(maxPrice-minPrice)).toFixed(symbol==="BTC/USD"?1:2)}</text></g>)}
-        {candles.map((c,i) => {
+      <svg className="edge-chart-canvas" viewBox="0 0 1000 440" role="img" aria-label={`${symbol} ${interval} candlestick chart with enabled indicators`}>
+        {[0,1,2,3,4].map(i => <g key={i}><line x1="12" x2="910" y1={chartTop+i*91.5} y2={chartTop+i*91.5} stroke="#34363d" strokeDasharray="3 5"/><text x="918" y={chartTop+4+i*91.5} fill="#9297a3" fontSize="11">{(maxPrice-(i/4)*(maxPrice-minPrice)).toFixed(symbol==="BTC/USD"?1:2)}</text></g>)}
+        {displayCandles.map((c,i) => {
           const cx=x(i), bodyTop=y(Math.max(c.open,c.close)), bodyBottom=y(Math.min(c.open,c.close));
           const up=c.close>=c.open, color=up?"#00c896":"#f05265";
-          const width=Math.max(1.2, Math.min(7, 880/candles.length*0.65));
+          const width=Math.max(2, Math.min(8, 880/displayCandles.length*0.68));
           return <g key={`${c.time}-${i}`}><line x1={cx} x2={cx} y1={y(c.high)} y2={y(c.low)} stroke={color} strokeWidth="1.2"/><rect x={cx-width/2} y={bodyTop} width={width} height={Math.max(1.5,bodyBottom-bodyTop)} fill={color}/></g>;
         })}
         {paths.map(p => <path key={p.id} d={p.d} fill="none" stroke={p.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/> )}
+        {livePrice != null && <g><line x1="12" x2="910" y1={y(livePrice)} y2={y(livePrice)} stroke={quoteMode === "live" ? "#e6b84b" : "#87909e"} strokeDasharray="5 4" strokeWidth="1.2"/><rect x="914" y={y(livePrice)-10} width="78" height="20" rx="3" fill={quoteMode === "live" ? "#d9a52e" : "#626b78"}/><text x="953" y={y(livePrice)+4} textAnchor="middle" fill="#111317" fontSize="11" fontWeight="700">{livePrice.toFixed(symbol === "BTC/USD" ? 1 : 2)}</text></g>}
+        <text x="18" y="425" fill="#87909e" fontSize="10">{displayCandles[0]?.time ? new Date(displayCandles[0].time).toLocaleString() : ""}</text>
+        <text x="900" y="425" textAnchor="end" fill="#87909e" fontSize="10">{displayCandles.at(-1)?.time ? new Date(displayCandles.at(-1)!.time).toLocaleString() : ""}</text>
       </svg>
     </div> : <div className="edge-chart-empty">No chart rendered because verified broker candle data is unavailable. Check the selected broker connection and instrument.</div>}
-    <div className="edge-chart-footer"><span>{candles.length ? `Latest close: ${candles[candles.length-1].close}` : "Waiting for verified data"}</span><span>Broker OHLC · No synthetic candles</span></div>
+    <div className="edge-chart-footer"><span>{livePrice != null ? `Live price: ${livePrice.toFixed(symbol === "BTC/USD" ? 1 : 2)}` : candles.length ? `Latest close: ${candles[candles.length-1].close}` : "Waiting for verified data"}</span><span>Broker OHLC + quote · No synthetic candles</span></div>
     {studioOpen && <section className="edge-pine-studio">
       <div className="edge-pine-heading"><div><strong>Pine Script Studio</strong><small>Paste Pine v5/v6 source. Supported plots are converted into native overlays.</small></div><span>LIMITED COMPATIBILITY</span></div>
       <textarea value={script} onChange={e => { setScript(e.target.value); setScriptError(""); setScriptNote(""); }} spellCheck={false} aria-label="Pine Script source editor"/>
