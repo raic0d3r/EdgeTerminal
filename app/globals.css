@@ -2301,7 +2301,7 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
 .edge-chart-indicators button.active{border-color:#d79a13;color:#ffc247;background:#33280f}
 .edge-chart-indicators button.pine-indicator{border-color:#4779bd;color:#8bbcff}
 .edge-chart-status{padding:7px 14px;color:#9099a7;font-size:11px;display:flex;align-items:center;gap:7px}.edge-live-dot,.edge-stale-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:0 0 7px}.edge-live-dot{background:#00c896;box-shadow:0 0 8px #00c89688}.edge-stale-dot{background:#e0a52e}
-.edge-chart-canvas-wrap{width:100%;min-height:260px;flex:1;overflow:hidden}
+.edge-chart-canvas-wrap{width:100%;min-height:260px;flex:1;overflow:hidden;display:flex;align-items:stretch}
 .edge-chart-canvas{display:block;width:100%;height:100%;min-height:300px}
 .edge-chart-empty{min-height:280px;display:grid;place-items:center;padding:30px;color:#a3a9b4;text-align:center}
 .edge-chart-footer{display:flex;justify-content:space-between;gap:10px;padding:8px 14px;border-top:1px solid #30343d;color:#858d9b;font-size:10px;flex-wrap:wrap}
@@ -2330,3 +2330,34 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
  .edge-chart-indicators button{font-size:10px;padding:6px 7px}
  .edge-chart-footer{font-size:9px}
 }
+
+/* Edge Chart navigation and replay controls */
+.edge-chart-nav{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid #30343d;background:#15171c}
+.edge-chart-nav button,.edge-chart-nav select{border:1px solid #3a414d;background:#20242c;color:#e8ebf0;border-radius:7px;padding:7px 10px;font-size:12px;cursor:pointer}
+.edge-chart-nav button:hover,.edge-chart-nav button.active{border-color:#e4a900;color:#ffc52e}
+.edge-chart-nav button:disabled{opacity:.45;cursor:not-allowed}
+.edge-replay-timeline{display:flex;align-items:center;gap:14px;padding:8px 14px;background:#1a1d23;border-bottom:1px solid #3a414d;color:#f0bd38;font-size:12px}
+.edge-replay-timeline input{flex:1;min-width:120px;accent-color:#e5ad21}
+.edge-chart-canvas{touch-action:none;cursor:grab;user-select:none}
+.edge-chart-canvas.is-dragging{cursor:grabbing}
+@media(max-width:640px){.edge-chart-nav{gap:5px;padding:7px}.edge-chart-nav button,.edge-chart-nav select{padding:7px;font-size:11px}.edge-replay-timeline{align-items:stretch;flex-direction:column;gap:6px}}
+
+/* Edge Chart: full-width TradingView-inspired plotting surface */
+.edge-chart-studio{overflow:hidden;min-height:520px}
+.edge-chart-canvas-wrap{width:100%;height:clamp(390px,62vh,660px);min-height:390px;flex:1 1 auto;overflow:hidden;background:#050607}
+.edge-chart-canvas{display:block;width:100%;height:100%;min-height:390px;touch-action:pan-y;cursor:crosshair;user-select:none}
+.edge-chart-canvas.is-dragging{cursor:grabbing}
+@media(max-width:700px){.edge-chart-canvas-wrap{height:440px;min-height:440px}.edge-chart-canvas{min-height:440px}}
+
+/* TradingView-inspired drawing rail and calendar separators */
+.edge-drawing-toolbar{width:42px;flex:0 0 42px;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 4px;background:#111318;border-right:1px solid #30343d}
+.edge-drawing-toolbar button{width:32px;height:34px;border:1px solid transparent;border-radius:5px;background:transparent;color:#c5ccd6;font-size:19px;cursor:pointer;line-height:1}
+.edge-drawing-toolbar button:hover,.edge-drawing-toolbar button.active{background:#292d35;border-color:#d9a52e;color:#ffc54a}
+.edge-chart-canvas{flex:1;min-width:0}
+
+.edge-drawing-toolbar{width:42px;flex:0 0 42px;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 4px;border-right:1px solid #30343d;background:#15171c}
+.edge-drawing-toolbar button{width:32px;height:32px;border:1px solid transparent;border-radius:6px;background:transparent;color:#c7ccd5;font-size:19px;line-height:1;cursor:pointer}
+.edge-drawing-toolbar button:hover,.edge-drawing-toolbar button.selected{background:#292e37;border-color:#e0a52e;color:#ffbd36}
+.edge-chart-canvas-wrap{min-height:320px}
+.edge-chart-canvas{min-width:0;flex:1}
+@media(max-width:600px){.edge-drawing-toolbar{width:36px;flex-basis:36px}.edge-drawing-toolbar button{width:30px;height:30px}}
