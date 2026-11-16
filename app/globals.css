@@ -2182,3 +2182,103 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
 @media(max-width:900px){.fed-intel-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:600px){.fed-intel{padding:13px;margin-top:13px}.fed-intel-head h2{font-size:17px}.fed-intel-grid{grid-template-columns:1fr 1fr}.fed-intel-outlook{grid-column:1/-1}.fed-intel-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.fed-intel-market{align-items:flex-start;flex-direction:column}.fed-intel-foot{flex-direction:column}.fed-intel-value{font-size:18px}}
 @media(max-width:360px){.fed-intel-grid,.fed-intel-metrics{grid-template-columns:minmax(0,1fr)}.fed-intel-outlook{grid-column:auto}}
+
+
+/* Mobile layout correction: keep the scorecard and Fed intelligence stacked.
+   The generic .accordion-body is a flex row; this feature contains two full-width
+   dashboard modules and must not inherit that side-by-side layout. */
+.msc-accordion-body {
+  display: block !important;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.msc-accordion-body > * {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.msc-accordion-body .msc-shell,
+.msc-accordion-body .fed-intel {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.msc-accordion-body .msc-shell *,
+.msc-accordion-body .fed-intel * {
+  min-width: 0;
+}
+.msc-accordion-body .msc-shell {
+  overflow: hidden;
+}
+.msc-accordion-body .msc-summary-row > span,
+.msc-accordion-body .msc-score-row > span,
+.msc-accordion-body .msc-fundamental-item,
+.msc-accordion-body .fed-intel-card,
+.msc-accordion-body .fed-intel-metric {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+@media (max-width: 760px) {
+  .msc-accordion-body {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .msc-accordion-body .msc-main-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .msc-accordion-body .msc-left-col {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .msc-accordion-body .msc-overview {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .msc-accordion-body .msc-target-tools {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .msc-accordion-body .msc-target-tools button {
+    max-width: 100%;
+    white-space: normal;
+  }
+  .msc-accordion-body .fed-intel {
+    margin: 12px 0 4px;
+    padding: 13px;
+  }
+  .msc-accordion-body .fed-intel-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .msc-accordion-body .fed-intel-head > div {
+    flex: 1 1 190px;
+    min-width: 0;
+  }
+  .msc-accordion-body .fed-intel-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .msc-accordion-body .fed-intel-outlook {
+    grid-column: 1 / -1;
+  }
+  .msc-accordion-body .fed-intel-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .msc-accordion-body .fed-intel-market {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .msc-accordion-body .fed-intel-foot {
+    flex-direction: column;
+  }
+}
+@media (max-width: 390px) {
+  .msc-accordion-body .fed-intel-grid,
+  .msc-accordion-body .fed-intel-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .msc-accordion-body .fed-intel-outlook {
+    grid-column: auto;
+  }
+}
