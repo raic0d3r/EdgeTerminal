@@ -2301,7 +2301,7 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
 .edge-chart-indicators button.active{border-color:#d79a13;color:#ffc247;background:#33280f}
 .edge-chart-indicators button.pine-indicator{border-color:#4779bd;color:#8bbcff}
 .edge-chart-status{padding:7px 14px;color:#9099a7;font-size:11px;display:flex;align-items:center;gap:7px}.edge-live-dot,.edge-stale-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:0 0 7px}.edge-live-dot{background:#00c896;box-shadow:0 0 8px #00c89688}.edge-stale-dot{background:#e0a52e}
-.edge-chart-canvas-wrap{width:100%;min-height:260px;flex:1;overflow:hidden}
+.edge-chart-canvas-wrap{width:100%;min-height:260px;flex:1;overflow:hidden;display:flex;align-items:stretch}
 .edge-chart-canvas{display:block;width:100%;height:100%;min-height:300px}
 .edge-chart-empty{min-height:280px;display:grid;place-items:center;padding:30px;color:#a3a9b4;text-align:center}
 .edge-chart-footer{display:flex;justify-content:space-between;gap:10px;padding:8px 14px;border-top:1px solid #30343d;color:#858d9b;font-size:10px;flex-wrap:wrap}
@@ -2348,3 +2348,9 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
 .edge-chart-canvas{display:block;width:100%;height:100%;min-height:360px;touch-action:pan-y;cursor:crosshair;user-select:none}
 .edge-chart-canvas.is-dragging{cursor:grabbing}
 @media(max-width:700px){.edge-chart-canvas-wrap{height:420px;min-height:420px}.edge-chart-canvas{min-height:420px}}
+
+/* TradingView-inspired drawing rail and calendar separators */
+.edge-drawing-toolbar{width:42px;flex:0 0 42px;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 4px;background:#111318;border-right:1px solid #30343d}
+.edge-drawing-toolbar button{width:32px;height:34px;border:1px solid transparent;border-radius:5px;background:transparent;color:#c5ccd6;font-size:19px;cursor:pointer;line-height:1}
+.edge-drawing-toolbar button:hover,.edge-drawing-toolbar button.active{background:#292d35;border-color:#d9a52e;color:#ffc54a}
+.edge-chart-canvas{flex:1;min-width:0}
