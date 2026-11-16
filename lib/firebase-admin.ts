@@ -23,7 +23,7 @@ function loadServiceAccount(): ServiceAccount {
       raw = rawJson;
     } else if (rawBase64) {
       raw = Buffer.from(rawBase64, "base64").toString("utf8");
-    } else if (credentialsPath) {
+    } else if (typeof credentialsPath === "string" && credentialsPath.length > 0) {
       raw = readFileSync(resolve(process.cwd(), credentialsPath), "utf8");
     } else {
       // Convenient local development fallback. This file must never be committed.
