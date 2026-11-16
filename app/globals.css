@@ -2330,3 +2330,14 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
  .edge-chart-indicators button{font-size:10px;padding:6px 7px}
  .edge-chart-footer{font-size:9px}
 }
+
+/* Edge Chart navigation and replay controls */
+.edge-chart-nav{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid #30343d;background:#15171c}
+.edge-chart-nav button,.edge-chart-nav select{border:1px solid #3a414d;background:#20242c;color:#e8ebf0;border-radius:7px;padding:7px 10px;font-size:12px;cursor:pointer}
+.edge-chart-nav button:hover,.edge-chart-nav button.active{border-color:#e4a900;color:#ffc52e}
+.edge-chart-nav button:disabled{opacity:.45;cursor:not-allowed}
+.edge-replay-timeline{display:flex;align-items:center;gap:14px;padding:8px 14px;background:#1a1d23;border-bottom:1px solid #3a414d;color:#f0bd38;font-size:12px}
+.edge-replay-timeline input{flex:1;min-width:120px;accent-color:#e5ad21}
+.edge-chart-canvas{touch-action:none;cursor:grab;user-select:none}
+.edge-chart-canvas.is-dragging{cursor:grabbing}
+@media(max-width:640px){.edge-chart-nav{gap:5px;padding:7px}.edge-chart-nav button,.edge-chart-nav select{padding:7px;font-size:11px}.edge-replay-timeline{align-items:stretch;flex-direction:column;gap:6px}}
