@@ -146,12 +146,12 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
     return { min: low - span * 0.08, max: high + span * 0.08 };
   }, [displayCandles, livePrice, replayIndex, viewEnd]);
   const minPrice = priceRange.min, maxPrice = priceRange.max;
-  const chartTop = 34, chartBottom = 342, volumeTop = 360, volumeBottom = 408, timeAxisTop = 414, timeAxisBottom = 470, chartLeft = 18, chartRight = 900;
+  const chartTop = 34, chartBottom = 342, volumeTop = 360, volumeBottom = 408, timeAxisTop = 414, timeAxisBottom = 520, chartLeft = 18, chartRight = 900;
   const x = (i: number) => chartLeft + (i / Math.max(1, displayCandles.length - 1)) * (chartRight-chartLeft);
   const y = (v: number) => chartTop + ((maxPrice - v) / (maxPrice - minPrice)) * (chartBottom-chartTop);
   const pointerPoint = (e: React.PointerEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    return { x: Math.max(chartLeft, Math.min(chartRight, (e.clientX - rect.left) / rect.width * 1000)), y: Math.max(chartTop, Math.min(chartBottom, (e.clientY - rect.top) / rect.height * 470)) };
+    return { x: Math.max(chartLeft, Math.min(chartRight, (e.clientX - rect.left) / rect.width * 1000)), y: Math.max(chartTop, Math.min(chartBottom, (e.clientY - rect.top) / rect.height * 520)) };
   };
   const series = (kind: "ema" | "sma", period: number) => average(closes, period, kind === "ema");
   const paths = useMemo(() => active.map(ind => {
@@ -238,13 +238,13 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
         <button type="button" title="Vertical line" aria-label="Vertical line" className={drawingTool === "vertical" ? "selected" : ""} onClick={() => setDrawingTool("vertical")}>┃</button>
         <button type="button" title="Clear drawings" aria-label="Clear drawings" onClick={() => setDrawings([])}>⌫</button>
       </aside>
-      <svg className={`edge-chart-canvas${dragging ? " is-dragging" : ""}`} viewBox="0 0 1000 470" preserveAspectRatio="none" role="img" aria-label={`${symbol} ${interval} candlestick chart with enabled indicators`} onWheel={e => { e.preventDefault(); setVisibleCount(v => Math.max(25, Math.min(candles.length || 500, Math.round(v * (e.deltaY > 0 ? 1.12 : 0.89))))); }} onPointerDown={e => { (e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId); if (drawingTool !== "cursor") { const p = pointerPoint(e); drawingRef.current = { tool: drawingTool, x1: p.x, y1: p.y, x2: p.x, y2: p.y }; return; } dragRef.current = { x: e.clientX, end: effectiveEnd }; setDragging(true); }} onPointerMove={e => { if (drawingRef.current) { const p = pointerPoint(e); drawingRef.current = { ...drawingRef.current, x2: p.x, y2: p.y }; return; } if (!dragRef.current) return; const dx = e.clientX - dragRef.current.x; const shift = Math.round(dx / Math.max(1, e.currentTarget.clientWidth) * visibleCount); const base = dragRef.current.end ?? candles.length; setViewEnd(Math.max(Math.min(candles.length, visibleCount), Math.min(candles.length, base - shift))); setReplayPlaying(false); }} onPointerUp={() => { if (drawingRef.current) { const d = drawingRef.current; setDrawings(current => [...current, { ...d, id: Date.now() }]); drawingRef.current = null; return; } dragRef.current = null; setDragging(false); }} onPointerCancel={() => { drawingRef.current = null; dragRef.current = null; setDragging(false); }}>
+      <svg className={`edge-chart-canvas${dragging ? " is-dragging" : ""}`} viewBox="0 0 1000 520" preserveAspectRatio="none" role="img" aria-label={`${symbol} ${interval} candlestick chart with enabled indicators`} onWheel={e => { e.preventDefault(); setVisibleCount(v => Math.max(25, Math.min(candles.length || 500, Math.round(v * (e.deltaY > 0 ? 1.12 : 0.89))))); }} onPointerDown={e => { (e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId); if (drawingTool !== "cursor") { const p = pointerPoint(e); drawingRef.current = { tool: drawingTool, x1: p.x, y1: p.y, x2: p.x, y2: p.y }; return; } dragRef.current = { x: e.clientX, end: effectiveEnd }; setDragging(true); }} onPointerMove={e => { if (drawingRef.current) { const p = pointerPoint(e); drawingRef.current = { ...drawingRef.current, x2: p.x, y2: p.y }; return; } if (!dragRef.current) return; const dx = e.clientX - dragRef.current.x; const shift = Math.round(dx / Math.max(1, e.currentTarget.clientWidth) * visibleCount); const base = dragRef.current.end ?? candles.length; setViewEnd(Math.max(Math.min(candles.length, visibleCount), Math.min(candles.length, base - shift))); setReplayPlaying(false); }} onPointerUp={() => { if (drawingRef.current) { const d = drawingRef.current; setDrawings(current => [...current, { ...d, id: Date.now() }]); drawingRef.current = null; return; } dragRef.current = null; setDragging(false); }} onPointerCancel={() => { drawingRef.current = null; dragRef.current = null; setDragging(false); }}>
         {[0,1,2,3,4].map(i => <g key={i}><line x1="12" x2="910" y1={chartTop+i*((chartBottom-chartTop)/4)} y2={chartTop+i*((chartBottom-chartTop)/4)} stroke="#34363d" strokeDasharray="2 5"/><text x="918" y={chartTop+4+i*((chartBottom-chartTop)/4)} fill="#a0a7b4" fontSize="11">{(maxPrice-(i/4)*(maxPrice-minPrice)).toFixed(symbol==="BTC/USD"?1:2)}</text></g>)}
         {displayCandles.map((c, i) => {
           if (i === 0) return null;
           const previousDay = new Date(displayCandles[i - 1].time).toLocaleDateString();
           const currentDay = new Date(c.time).toLocaleDateString();
-          return previousDay !== currentDay ? <g key={`day-${c.time}`}><line x1={x(i)} x2={x(i)} y1={chartTop} y2={volumeBottom} stroke="#7d8796" strokeDasharray="4 5" opacity=".8"/><text x={x(i)+5} y="454" fill="#a0a7b4" fontSize="10">{new Date(c.time).toLocaleDateString(undefined,{day:"2-digit",month:"short"})}</text></g> : null;
+          return previousDay !== currentDay ? <g key={`day-${c.time}`}><line x1={x(i)} x2={x(i)} y1={chartTop} y2={timeAxisBottom} stroke="#7d8796" strokeDasharray="4 5" opacity=".8"/><text x={x(i)+5} y="506" fill="#c0c7d2" fontSize="11">{new Date(c.time).toLocaleDateString(undefined,{day:"2-digit",month:"short"})}</text></g> : null;
         })}
         {drawings.map(d => <g key={d.id} pointerEvents="none"><line x1={d.tool === "vertical" ? d.x1 : d.x1} x2={d.tool === "vertical" ? d.x1 : d.tool === "horizontal" ? 910 : d.x2} y1={d.tool === "horizontal" ? d.y1 : d.y1} y2={d.tool === "horizontal" ? d.y1 : d.tool === "vertical" ? volumeBottom : d.y2} stroke="#f5c451" strokeWidth="1.5" strokeDasharray="5 3"/></g>)}
         <line x1="12" x2="910" y1={volumeTop-8} y2={volumeTop-8} stroke="#34363d"/><text x="18" y={volumeTop+10} fill="#a0a7b4" fontSize="10">VOL · BROKER TICKS</text>
@@ -259,22 +259,21 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
         {paths.map(p => <path key={p.id} d={p.d} fill="none" stroke={p.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/> )}
         {(() => { const displayedPrice = replayIndex === null ? livePrice : candles[replayIndex]?.close; return displayedPrice != null && Number.isFinite(displayedPrice) ? <g><line x1="12" x2="910" y1={y(displayedPrice)} y2={y(displayedPrice)} stroke={replayIndex === null && quoteMode === "live" ? "#e6b84b" : "#87909e"} strokeDasharray="5 4" strokeWidth="1.2"/><rect x="914" y={y(displayedPrice)-10} width="78" height="20" rx="3" fill={replayIndex === null && quoteMode === "live" ? "#d9a52e" : "#626b78"}/><text x="953" y={y(displayedPrice)+4} textAnchor="middle" fill="#111317" fontSize="11" fontWeight="700">{displayedPrice.toFixed(symbol === "BTC/USD" ? 1 : 2)}</text></g> : null; })()}
         <rect x="0" y={timeAxisTop} width="1000" height={timeAxisBottom-timeAxisTop} fill="#101318" />
-        <line x1="12" x2="990" y1={timeAxisTop} y2={timeAxisTop} stroke="#343943" />
+        <line x1="12" x2="990" y1={timeAxisTop} y2={timeAxisTop} stroke="#343943" /><text x="18" y="438" fill="#8f98a7" fontSize="10" letterSpacing=".5">TIME</text>
+        {displayCandles[0] && <text x={chartLeft} y="506" fill="#c0c7d2" fontSize="11">{new Date(displayCandles[0].time).toLocaleDateString(undefined,{day:"2-digit",month:"short",year:"numeric"})}</text>}
         {displayCandles.map((c, i) => {
           if (i === 0) return null;
           const previousDay = new Date(displayCandles[i - 1].time).toLocaleDateString();
           const currentDay = new Date(c.time).toLocaleDateString();
-          return previousDay !== currentDay ? <text key={`day-label-${c.time}`} x={x(i)+5} y="456" fill="#c0c7d2" fontSize="10">{new Date(c.time).toLocaleDateString(undefined,{day:"2-digit",month:"short"})}</text> : null;
+          return previousDay !== currentDay ? <text key={`day-label-${c.time}`} x={x(i)+5} y="506" fill="#c0c7d2" fontSize="11">{new Date(c.time).toLocaleDateString(undefined,{day:"2-digit",month:"short"})}</text> : null;
         })}
         {Array.from({ length: 6 }, (_, tick) => {
           const index = Math.min(displayCandles.length - 1, Math.round(tick * (displayCandles.length - 1) / 5));
           const candle = displayCandles[index];
           if (!candle) return null;
           const date = new Date(candle.time);
-          const label = displayCandles.some((item, i) => i < index && new Date(item.time).toDateString() !== date.toDateString())
-            ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-            : date.toLocaleString([], { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-          return <g key={`time-tick-${tick}`}><line x1={x(index)} x2={x(index)} y1={volumeBottom + 2} y2={volumeBottom + 9} stroke="#7d8796"/><text x={x(index)} y="438" textAnchor={tick === 0 ? "start" : tick === 5 ? "end" : "middle"} fill="#a0a7b4" fontSize="10">{label}</text></g>;
+          const label = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          return <g key={`time-tick-${tick}`}><line x1={x(index)} x2={x(index)} y1={timeAxisTop + 8} y2={timeAxisTop + 16} stroke="#7d8796"/><text x={x(index)} y="480" textAnchor={tick === 0 ? "start" : tick === 5 ? "end" : "middle"} fill="#a0a7b4" fontSize="10">{label}</text></g>;
         })}
       </svg>
     </div> : <div className="edge-chart-empty">No chart rendered because verified broker candle data is unavailable. Check the selected broker connection and instrument.</div>}

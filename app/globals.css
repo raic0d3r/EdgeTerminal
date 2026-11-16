@@ -2361,3 +2361,22 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
 .edge-chart-canvas-wrap{min-height:320px}
 .edge-chart-canvas{min-width:0;flex:1}
 @media(max-width:600px){.edge-drawing-toolbar{width:36px;flex-basis:36px}.edge-drawing-toolbar button{width:30px;height:30px}}
+
+/* Explicit, always-visible bottom time axis: reserve real layout height for SVG axis labels. */
+.edge-chart-canvas-wrap{
+  height:520px !important;
+  min-height:520px !important;
+  flex:0 0 520px !important;
+  overflow:hidden;
+  align-items:stretch;
+}
+.edge-chart-canvas{
+  height:520px !important;
+  min-height:520px !important;
+  flex:1 1 auto;
+  display:block;
+}
+@media(max-width:700px){
+  .edge-chart-canvas-wrap{height:520px !important;min-height:520px !important;flex-basis:520px !important}
+  .edge-chart-canvas{height:520px !important;min-height:520px !important}
+}
