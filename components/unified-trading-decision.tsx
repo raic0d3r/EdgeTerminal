@@ -37,6 +37,7 @@ type FlowData = { status: string; providerStatus?: string; storedTradeCount?: nu
 type ContextSignal = { status: string; bias: "Bullish" | "Bearish" | "Neutral"; contrarianBias?: "Bullish" | "Bearish" | "Neutral"; provider?: string; source?: string; detail?: string; reportDate?: string; weeklyChange?: number | null; percentile52w?: number | null; netContracts?: number; longPositionPercentage?: number; shortPositionPercentage?: number; freshness?: string; score?: number | null; inputs?: Record<string, { value: number; date: string; previousValue?: number | null; comparisonDate?: string | null; change?: number | null } | null> };
 type ContextResponse = { cot?: ContextSignal; retailSentiment?: ContextSignal; fundamentals?: ContextSignal; updatedAt?: string };
 type EvidenceRow = { module: string; signal: string; detail: string; state: "support" | "oppose" | "neutral" | "missing" };
+type FedPolicyContext = { status?: string; pressure?: { label?: string; score?: number | null; inputsAvailable?: number; inputsTotal?: number }; policyRate?: { value?: number; date?: string } | null; nextMeeting?: { label?: string } | null };
 
 const INTERVALS: Record<string, string> = { "1m":"1min", "5m":"5min", "10m":"10min", "15m":"15min", "30m":"30min", "1h":"1h", "4h":"4h", "1d":"1day", "1w":"1week", "1mo":"1month" };
 const LOWER: Record<string,string> = { "1m":"1min", "5m":"1min", "10m":"5min", "15m":"5min", "30m":"15min", "1h":"15min", "4h":"1h", "1d":"4h", "1w":"1day", "1mo":"1week" };
@@ -62,6 +63,7 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
   const [liquidity,setLiquidity] = useState<LiquidityMap | null>(null);
   const [flow,setFlow] = useState<FlowData | null>(null);
   const [context,setContext] = useState<ContextResponse | null>(null);
+  const [fedPolicy,setFedPolicy] = useState<FedPolicyContext | null>(null);
   const [entry,setEntry] = useState<LowerEvidence | null>(null);
   const [loading,setLoading] = useState(true);
   const [error,setError] = useState("");
@@ -86,11 +88,12 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
       const token = await user.getIdToken();
       const query = new URLSearchParams({ symbol:asset, interval:selected, provider:broker });
       const lowerQuery = new URLSearchParams({ symbol:asset, interval:lower, provider:broker, purpose:"analysis" });
-      const [miResponse, lowerResponse, flowResponse, contextResponse] = await Promise.all([
+      const [miResponse, lowerResponse, flowResponse, contextResponse, fedPolicyResponse] = await Promise.all([
         fetch(`/api/market-intelligence?${query}`,{headers:{Authorization:`Bearer ${token}`},cache:"no-store"}),
         fetchMarketData(`/api/market?${lowerQuery.toString()}`,{cache:"no-store"}),
         (asset === "BTC/USD" ? Promise.resolve(null) : fetch(`/api/orderflow/absorption?instrument=${asset === "XAU/USD" ? "GC" : "SI"}`,{headers:{Authorization:`Bearer ${token}`},cache:"no-store"}).catch(()=>null)),
         fetch(`/api/market-context?asset=${encodeURIComponent(asset)}`,{cache:"no-store"}).catch(()=>null),
+        fetch("/api/fed-intelligence",{cache:"no-store"}).catch(()=>null),
       ]);
       const miBody = await miResponse.json();
       if (!miResponse.ok || !miBody?.forecast) throw new Error(miBody?.error || `Market Intelligence unavailable (${miResponse.status}).`);
@@ -99,6 +102,7 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
       let flowBody: FlowData | null = null;
       if (flowResponse?.ok) flowBody = await flowResponse.json();
       const contextBody: ContextResponse | null = contextResponse?.ok ? await contextResponse.json() : null;
+      const fedPolicyBody: FedPolicyContext | null = fedPolicyResponse?.ok ? await fedPolicyResponse.json() : null;
       const validationKey = `${asset}|${interval}`;
       const incomingPrices: ValidationPrice[] = Array.isArray(miBody.validationPrices) ? miBody.validationPrices : [];
       setValidationPrices(previous => {
@@ -113,10 +117,11 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
       setEntry(inspectEntry(lowerCandles));
       setFlow(flowBody);
       setContext(contextBody);
+      setFedPolicy(fedPolicyBody);
       setUpdated(new Date().toLocaleTimeString());
     } catch (e) {
       if (!mounted.current) return;
-      setForecast(null); setLiquidity(null); setFlow(null); setContext(null); setEntry(null);
+      setForecast(null); setLiquidity(null); setFlow(null); setContext(null); setFedPolicy(null); setEntry(null);
       setError(e instanceof Error ? e.message : "Unified analysis failed.");
     } finally { if (mounted.current) setLoading(false); }
   },[asset,broker,selected,lower,refreshKey]);
@@ -150,7 +155,7 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
       {key:"retail",label:"Retail directional positioning",bias:context?.retailSentiment?.bias||"Neutral",weight:15,active:context?.retailSentiment?.status==="connected",detail:context?.retailSentiment?.status==="connected"?`${context.retailSentiment.provider||"Provider"} · ${context.retailSentiment.longPositionPercentage??"—"}% long / ${context.retailSentiment.shortPositionPercentage??"—"}% short`:context?.retailSentiment?.detail||"Unavailable; excluded"},
       {key:"fundamentals",label:"Macro fundamentals",bias:context?.fundamentals?.bias||"Neutral",weight:25,active:context?.fundamentals?.status==="connected",detail:context?.fundamentals?.detail||"FRED data unavailable; excluded"},
     ]);
-  },[forecast,context]);
+  },[forecast,context,fedPolicy]);
 
   const model = useMemo(() => {
     if (!forecast) return { decision:"WAIT" as Direction, rows:[] as EvidenceRow[], reasons:[] as string[], conflicts:[] as string[], agreement:0, opposition:0, unifiedBias };
@@ -188,6 +193,7 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
     const macroSource = unifiedBias.sources.find(source=>source.key==="fundamentals");
     const macroVote = macro?.bias==="Bullish"?"BUY":macro?.bias==="Bearish"?"SELL":"WAIT";
     rows.push({module:"Fundamentals / macro",signal:macro?.status==="connected"?(macroVote==="WAIT"?"NEUTRAL":macroVote):"UNAVAILABLE",detail:`${macro?.detail||"FRED macro inputs unavailable; excluded from the composite."} · ${macroSource?.weight??25}% configured weight · ${macroSource?.contribution??0} contribution`,state:macro?.status==="connected"?(macroVote===base&&base!=="WAIT"?"support":macroVote!=="WAIT"&&base!=="WAIT"?"oppose":"neutral"):"missing"});
+    rows.push({module:"Fed monetary policy context",signal:fedPolicy?.pressure?.label?.toUpperCase()||"UNAVAILABLE",detail:`Economic pressure heuristic only; ${fedPolicy?.pressure?.inputsAvailable??0}/${fedPolicy?.pressure?.inputsTotal??4} indicators available. Effective Fed Funds ${fedPolicy?.policyRate?.value==null?"unavailable":`${fedPolicy.policyRate.value}%`}; next FOMC ${fedPolicy?.nextMeeting?.label||"date unavailable"}. Not a market-implied probability and not an independent BUY/SELL vote.`,state:"neutral"});
     const compositeSignal = unifiedBias.bias==="Bullish"?"BUY":unifiedBias.bias==="Bearish"?"SELL":"WAIT";
     rows.push({module:"Unified weighted market bias",signal:compositeSignal==="WAIT"?"NEUTRAL":compositeSignal,detail:`${unifiedBias.bias} · ${unifiedBias.score??"—"}/100 · ${unifiedBias.activeInputs}/${unifiedBias.totalInputs} active sources · ${unifiedBias.confidence}% source coverage. ${unifiedBias.methodology}`,state:compositeSignal===base&&base!=="WAIT"?"support":compositeSignal!=="WAIT"&&base!=="WAIT"?"oppose":"neutral"});
     const hist = forecast.historical;

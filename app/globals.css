@@ -2145,3 +2145,40 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
 .instrument-selector-label{font-size:9px;font-weight:800;letter-spacing:.09em;color:#92929c}
 .instrument-selector select{appearance:none;-webkit-appearance:none;min-width:154px;border:0;outline:0;background:transparent;color:#f3f4f6;font-size:12px;font-weight:800;padding:9px 22px 9px 2px;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 4px center}
 .instrument-selector select option{background:#202024;color:#f3f4f6}
+
+
+/* FED Monetary Policy Intelligence */
+.fed-intel{margin:18px 0 4px;padding:20px;border:1px solid var(--border,#30343b);border-radius:16px;background:var(--panel,#1c1c1f);color:var(--foreground,#f3f4f6);min-width:0}
+.fed-intel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px}
+.fed-intel-eyebrow{font-size:10px;font-weight:800;letter-spacing:.13em;color:#f5a900;margin-bottom:7px}
+.fed-intel-head h2{font-size:20px;font-weight:800;margin:0}
+.fed-intel-head p{font-size:12px;color:var(--muted,#9298a3);margin:5px 0 0}
+.fed-intel-refresh{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border,#343943);border-radius:8px;padding:8px 11px;background:transparent;color:inherit;font-size:12px;cursor:pointer}
+.fed-spin{animation:fedSpin 1s linear infinite}@keyframes fedSpin{to{transform:rotate(360deg)}}
+.fed-intel-grid{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:10px}
+.fed-intel-card,.fed-intel-metric{min-width:0;border:1px solid var(--border,#30343b);border-radius:11px;padding:14px;background:rgba(255,255,255,.015)}
+.fed-intel-label{display:block;color:var(--muted,#969ba5);font-size:10px;font-weight:800;letter-spacing:.09em;margin-bottom:10px}
+.fed-intel-pressure,.fed-intel-value{display:block;font-size:21px;font-weight:850;line-height:1.25;overflow-wrap:anywhere}
+.fed-intel-pressure.hawkish{color:#fb7185}.fed-intel-pressure.dovish{color:#34d399}.fed-intel-pressure.mixed{color:#fbbf24}
+.fed-intel-card small,.fed-intel-metric small{display:block;color:var(--muted,#969ba5);font-size:10px;line-height:1.5;margin-top:7px}
+.fed-intel-scoreline{display:flex;justify-content:space-between;gap:8px;color:var(--muted,#969ba5);font-size:11px;margin-top:14px}
+.fed-intel-scoreline b{color:inherit}
+.fed-intel-meter{height:6px;background:rgba(128,128,128,.2);border-radius:10px;overflow:hidden;margin-top:7px}
+.fed-intel-meter span{display:block;height:100%;background:linear-gradient(90deg,#34d399,#fbbf24,#fb7185);border-radius:10px}
+.fed-intel-section-title{font-size:10px;font-weight:800;letter-spacing:.1em;color:var(--muted,#969ba5);margin:18px 0 9px}
+.fed-intel-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
+.fed-intel-metric span{display:block;color:var(--muted,#969ba5);font-size:11px;margin-bottom:8px}
+.fed-intel-metric b{font-size:18px}
+.fed-intel-market{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-top:12px;padding:14px;border:1px solid var(--border,#30343b);border-radius:11px}
+.fed-intel-market b{display:block;font-size:14px}
+.fed-intel-market p{margin:5px 0 0;color:var(--muted,#969ba5);font-size:11px;line-height:1.5}
+.fed-intel-market a{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;color:#f5a900;text-decoration:none;font-size:12px;font-weight:800}
+.fed-intel-diagnostics{margin-top:10px;color:var(--muted,#969ba5);font-size:11px}
+.fed-intel-diagnostics summary{cursor:pointer}
+.fed-intel-diagnostics p{overflow-wrap:anywhere}
+.fed-intel-foot{display:flex;justify-content:space-between;gap:12px;margin-top:12px;color:var(--muted,#858b96);font-size:10px;line-height:1.5}
+.fed-intel-foot span:first-child{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.fed-intel-error{display:flex;gap:8px;align-items:center;margin-bottom:12px;padding:10px;border:1px solid rgba(248,113,113,.4);border-radius:8px;color:#fca5a5;font-size:12px}
+@media(max-width:900px){.fed-intel-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.fed-intel{padding:13px;margin-top:13px}.fed-intel-head h2{font-size:17px}.fed-intel-grid{grid-template-columns:1fr 1fr}.fed-intel-outlook{grid-column:1/-1}.fed-intel-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.fed-intel-market{align-items:flex-start;flex-direction:column}.fed-intel-foot{flex-direction:column}.fed-intel-value{font-size:18px}}
+@media(max-width:360px){.fed-intel-grid,.fed-intel-metrics{grid-template-columns:minmax(0,1fr)}.fed-intel-outlook{grid-column:auto}}

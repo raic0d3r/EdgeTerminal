@@ -21,6 +21,7 @@ import EconomicCalendar from "@/components/economic-calendar";
 import NewsCenter, { NewsTicker } from "@/components/news-center";
 import MasterConfluenceEngine from "@/components/master-confluence-engine";
 import MasterScorecard from "@/components/master-scorecard";
+import FedMonetaryPolicyIntelligence from "@/components/fed-monetary-policy-intelligence";
 import UnifiedTradingDecision from "@/components/unified-trading-decision";
 import TradeJournal from "@/components/trade-journal";
 import MarketIntelligence from "@/components/market-intelligence";
@@ -691,7 +692,7 @@ function Dashboard() {
                 </div>
               ) : title === "Master Scorecard & Key Levels" ? (
                 <div className="accordion-body msc-accordion-body">
-                  <FeatureGate title="Master Scorecard & Key Levels"><MasterScorecard asset={asset} interval={tf} theme={lightTheme ? "light" : "dark"} /></FeatureGate>
+                  <FeatureGate title="Master Scorecard & Key Levels"><MasterScorecard asset={asset} interval={tf} theme={lightTheme ? "light" : "dark"} /><FedMonetaryPolicyIntelligence /></FeatureGate>
                 </div>
               ) : title === "COT Institutional Sentiment" ? (
                 <div className="accordion-body cot-accordion-body">
