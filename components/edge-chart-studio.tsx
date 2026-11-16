@@ -76,7 +76,14 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
       const response = await fetchMarketData(`/api/market?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(API_INTERVAL[interval] || interval)}&provider=${provider}&historyBars=500`);
       const body = await response.json();
       if (!response.ok || !Array.isArray(body?.data?.candles)) throw new Error(body?.error || "Broker candle history is unavailable.");
-      const rows = body.data.candles.filter((c: Candle) => Number.isFinite(Number(c.open)) && Number.isFinite(Number(c.high)) && Number.isFinite(Number(c.low)) && Number.isFinite(Number(c.close)));
+      const rows = body.data.candles.map((c: Candle) => ({
+        ...c, open: Number(c.open), high: Number(c.high), low: Number(c.low), close: Number(c.close),
+      })).filter((c: Candle) =>
+        Number.isFinite(c.open) && Number.isFinite(c.high) &&
+        Number.isFinite(c.low) && Number.isFinite(c.close) &&
+        c.high >= c.low && c.high >= Math.max(c.open, c.close) &&
+        c.low <= Math.min(c.open, c.close)
+      );
       if (!rows.length) throw new Error("No verified candles were returned by the selected broker.");
       setCandles(rows);
       setStatus(`${body.provider || provider} · ${rows.length} broker candles · ${body.status || "data"} · ${body.data?.volumeType || "volume type unverified"}`);
@@ -92,11 +99,23 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
   }, []);
 
   const closes = useMemo(() => candles.map(c => Number(c.close)), [candles]);
-  const high = Math.max(...candles.map(c => Number(c.high)), 0);
-  const low = Math.min(...candles.map(c => Number(c.low)), 0);
-  const span = Math.max(high - low, Math.abs(high) * 0.0001, 0.000001);
-  const pad = span * 0.08;
-  const minPrice = low - pad, maxPrice = high + pad;
+  // Derive the visible scale from the actual broker candle range.
+  // Do not seed the minimum with zero: that compresses positive-price
+  // instruments (for example XAUUSD) against the top of the chart.
+  const priceRange = useMemo(() => {
+    const valid = candles.filter(c =>
+      Number.isFinite(c.high) && Number.isFinite(c.low) &&
+      Number.isFinite(c.open) && Number.isFinite(c.close) &&
+      c.high >= c.low
+    );
+    if (!valid.length) return { min: 0, max: 1 };
+    const low = valid.reduce((v, c) => Math.min(v, c.low), Number.POSITIVE_INFINITY);
+    const high = valid.reduce((v, c) => Math.max(v, c.high), Number.NEGATIVE_INFINITY);
+    const rawSpan = high - low;
+    const pad = rawSpan > 0 ? rawSpan * 0.08 : Math.max(Math.abs(high) * 0.001, 0.01);
+    return { min: low - pad, max: high + pad };
+  }, [candles]);
+  const minPrice = priceRange.min, maxPrice = priceRange.max;
   const x = (i: number) => 20 + (i / Math.max(1, candles.length - 1)) * 940;
   const y = (v: number) => 20 + ((maxPrice - v) / (maxPrice - minPrice)) * 420;
   const series = (kind: "ema" | "sma", period: number) => average(closes, period, kind === "ema");
