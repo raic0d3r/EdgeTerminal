@@ -5,7 +5,7 @@ import { fetchMarketData } from "@/lib/market-selection";
 import EdgeLightweightChart from "@/components/edge-lightweight-chart";
 
 type Candle = { time: string; open: number; high: number; low: number; close: number; volume?: number | null };
-type Indicator = { id: string; name: string; kind: "ema" | "sma"; period: number; color: string; source: "builtin" | "pine" };
+type Indicator = { id: string; name: string; kind: "ema" | "sma" | "zigzag"; period: number; color: string; source: "builtin" | "pine" };
 type PinePlot = { name: string; kind: "ema" | "sma" | "close"; period: number; color: string };
 
 const API_INTERVAL: Record<string, string> = {
@@ -46,6 +46,7 @@ const PRESETS: Indicator[] = [
   { id: "ema-20", name: "EMA 20", kind: "ema", period: 20, color: "#f5b942", source: "builtin" },
   { id: "ema-50", name: "EMA 50", kind: "ema", period: 50, color: "#4aa3ff", source: "builtin" },
   { id: "sma-200", name: "SMA 200", kind: "sma", period: 200, color: "#c084fc", source: "builtin" },
+  { id: "zigzag-12", name: "ZigZag (12, 0.5%)", kind: "zigzag", period: 12, color: "#e879f9", source: "builtin" },
 ];
 
 function average(values: number[], period: number, exponential: boolean) {

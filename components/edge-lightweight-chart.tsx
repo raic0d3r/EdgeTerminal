@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 type Candle = { time: string; open: number; high: number; low: number; close: number; volume?: number | null };
-type Indicator = { id: string; name: string; kind: "ema" | "sma"; period: number; color: string };
+type Indicator = { id: string; name: string; kind: "ema" | "sma" | "zigzag"; period: number; color: string };
 type ChartModule = {
   createChart: (el: HTMLElement, options: Record<string, unknown>) => any;
   CandlestickSeries: any; BarSeries: any; LineSeries: any; HistogramSeries: any;
@@ -34,6 +34,37 @@ function movingAverage(rows: Candle[], period: number, exponential: boolean) {
     }
   }
   return values;
+}
+
+function zigZagPoints(rows: Candle[], depth = 12, deviationPercent = 0.5) {
+  if (rows.length < depth * 2 + 1) return [] as Array<{ time: number; value: number }>;
+  const pivots: Array<{ index: number; price: number; type: "high" | "low" }> = [];
+  for (let i = depth; i < rows.length - depth; i++) {
+    let isHigh = true;
+    let isLow = true;
+    for (let j = i - depth; j <= i + depth; j++) {
+      if (j === i) continue;
+      if (rows[j].high > rows[i].high) isHigh = false;
+      if (rows[j].low < rows[i].low) isLow = false;
+      if (!isHigh && !isLow) break;
+    }
+    if (!isHigh && !isLow) continue;
+    const candidates = [
+      ...(isHigh ? [{ index: i, price: rows[i].high, type: "high" as const }] : []),
+      ...(isLow ? [{ index: i, price: rows[i].low, type: "low" as const }] : []),
+    ];
+    for (const candidate of candidates) {
+      const last = pivots[pivots.length - 1];
+      if (!last) { pivots.push(candidate); continue; }
+      if (candidate.type === last.type) {
+        if ((candidate.type === "high" && candidate.price > last.price) || (candidate.type === "low" && candidate.price < last.price)) pivots[pivots.length - 1] = candidate;
+        continue;
+      }
+      const change = Math.abs(candidate.price - last.price) / Math.max(Math.abs(last.price), 1e-9) * 100;
+      if (change >= deviationPercent) pivots.push(candidate);
+    }
+  }
+  return pivots.map(p => ({ time: toEpoch(rows[p.index].time), value: p.price })).filter(p => p.time > 0);
 }
 
 export default function EdgeLightweightChart({
@@ -230,7 +261,8 @@ export default function EdgeLightweightChart({
     indicatorSeriesRef.current.clear();
     for (const indicator of indicators) {
       const line = chart.addSeries(module.LineSeries, { color: indicator.color, lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, title: indicator.name });
-      line.setData(movingAverage(cleanCandles, indicator.period, indicator.kind === "ema").map(p => ({ time: p.time as any, value: p.value })));
+      const points = indicator.kind === "zigzag" ? zigZagPoints(cleanCandles, indicator.period, 0.5) : movingAverage(cleanCandles, indicator.period, indicator.kind === "ema");
+      line.setData(points.map(p => ({ time: p.time as any, value: p.value })));
       indicatorSeriesRef.current.set(indicator.id, line);
     }
   }, [module, indicators, cleanCandles]);
