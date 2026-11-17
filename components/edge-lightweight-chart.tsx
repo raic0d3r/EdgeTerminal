@@ -37,12 +37,15 @@ function movingAverage(rows: Candle[], period: number, exponential: boolean) {
 }
 
 export default function EdgeLightweightChart({
-  symbol, interval, candles, indicators, livePrice, quoteMode, onChartType, toolbarControls, toolbarActions,
+  symbol, interval, candles, indicators, livePrice, quoteMode, drawingTool = "cursor", clearDrawingsVersion = 0, onChartType, toolbarControls, toolbarActions,
 }: {
   symbol: string; interval: string; candles: Candle[]; indicators: Indicator[];
-  livePrice: number | null; quoteMode: string; onChartType?: (type: string) => void; toolbarControls?: ReactNode; toolbarActions?: ReactNode;
+  livePrice: number | null; quoteMode: string; drawingTool?: "cursor" | "trend" | "horizontal" | "vertical"; clearDrawingsVersion?: number; onChartType?: (type: string) => void; toolbarControls?: ReactNode; toolbarActions?: ReactNode;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const [drawings, setDrawings] = useState<Array<{ id: number; tool: "trend" | "horizontal" | "vertical"; t1: any; p1: number; t2: any; p2: number }>>([]);
+  const [draft, setDraft] = useState<{ tool: "trend" | "horizontal" | "vertical"; t1: any; p1: number; t2: any; p2: number } | null>(null);
+  const [drawVersion, setDrawVersion] = useState(0);
   const chartRef = useRef<any>(null);
   const candleSeriesRef = useRef<any>(null);
   const volumeSeriesRef = useRef<any>(null);
@@ -52,6 +55,54 @@ export default function EdgeLightweightChart({
   const [ohlc, setOhlc] = useState<Candle | null>(null);
   const [loadError, setLoadError] = useState("");
   const digits = symbol === "BTC/USD" ? 1 : 2;
+  const drawingMode = drawingTool !== "cursor";
+
+  useEffect(() => { setDrawings([]); setDraft(null); }, [clearDrawingsVersion]);
+
+  function drawingPoint(event: React.PointerEvent<SVGSVGElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const px = event.clientX - rect.left;
+    const py = event.clientY - rect.top;
+    const chart = chartRef.current;
+    const series = candleSeriesRef.current;
+    if (!chart || !series) return null;
+    const time = chart.timeScale().coordinateToTime(px);
+    const price = series.coordinateToPrice(py);
+    return time != null && price != null && Number.isFinite(Number(price)) ? { time, price: Number(price) } : null;
+  }
+
+  function startDrawing(event: React.PointerEvent<SVGSVGElement>) {
+    if (!drawingMode) return;
+    const point = drawingPoint(event);
+    if (!point) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const tool = drawingTool as "trend" | "horizontal" | "vertical";
+    setDraft({ tool, t1: point.time, p1: point.price, t2: point.time, p2: point.price });
+  }
+  function moveDrawing(event: React.PointerEvent<SVGSVGElement>) {
+    if (!draft) return;
+    const point = drawingPoint(event);
+    if (point) setDraft(current => current ? { ...current, t2: point.time, p2: point.price } : null);
+  }
+  function finishDrawing(event: React.PointerEvent<SVGSVGElement>) {
+    if (!draft) return;
+    const point = drawingPoint(event);
+    const finalDrawing = point ? { ...draft, t2: point.time, p2: point.price } : draft;
+    setDrawings(current => [...current, { ...finalDrawing, id: Date.now() + current.length }]);
+    setDraft(null);
+  }
+  function drawingCoordinates(item: { tool: "trend" | "horizontal" | "vertical"; t1: any; p1: number; t2: any; p2: number }) {
+    const chart = chartRef.current;
+    const series = candleSeriesRef.current;
+    if (!chart || !series) return null;
+    const timeScale = chart.timeScale();
+    const x1 = timeScale.timeToCoordinate(item.t1);
+    const x2 = timeScale.timeToCoordinate(item.t2);
+    const y1 = series.priceToCoordinate(item.p1);
+    const y2 = series.priceToCoordinate(item.p2);
+    if (x1 == null || x2 == null || y1 == null || y2 == null) return null;
+    return { x1, x2, y1, y2 };
+  }
 
   useEffect(() => {
     let alive = true;
@@ -80,6 +131,8 @@ export default function EdgeLightweightChart({
       localization: { priceFormatter: (price: number) => price.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits }) },
     });
     chartRef.current = chart;
+    chart.timeScale().subscribeVisibleLogicalRangeChange(() => setDrawVersion(v => v + 1));
+    setDrawVersion(v => v + 1);
     const candleSeries = chart.addSeries(module.CandlestickSeries, {
       upColor: "#089981", downColor: "#f23645", borderUpColor: "#089981", borderDownColor: "#f23645",
       wickUpColor: "#089981", wickDownColor: "#f23645", priceLineVisible: true, lastValueVisible: true,
@@ -92,7 +145,7 @@ export default function EdgeLightweightChart({
     volumeSeriesRef.current = volumeSeries;
     const resize = new ResizeObserver((entries) => {
       const box = entries[0]?.contentRect;
-      if (box && box.width > 0 && box.height > 0) chart.applyOptions({ width: Math.floor(box.width), height: Math.floor(box.height) });
+      if (box && box.width > 0 && box.height > 0) { chart.applyOptions({ width: Math.floor(box.width), height: Math.floor(box.height) }); setDrawVersion(v => v + 1); }
     });
     resize.observe(el);
     chart.subscribeCrosshairMove((param: any) => {
@@ -168,6 +221,19 @@ export default function EdgeLightweightChart({
     </div>
     <div className="edge-tv-ohlc"><span className="edge-tv-market-dot"/> <strong>{symbol}</strong><span>· {interval} · {quoteMode === "live" ? "LIVE BROKER" : "BROKER"}</span>{ohlc && <b>O {ohlc.open.toFixed(digits)} H {ohlc.high.toFixed(digits)} L {ohlc.low.toFixed(digits)} C {ohlc.close.toFixed(digits)}</b>}</div>
     {loadError && <div className="edge-tv-load-error">{loadError}</div>}
-    <div ref={hostRef} className="edge-tv-chart-host" aria-label={`${symbol} ${interval} broker candlestick chart`} />
+    <div className="edge-tv-chart-stage">
+      <div ref={hostRef} className="edge-tv-chart-host" aria-label={`${symbol} ${interval} broker candlestick chart`} />
+      <svg data-draw-version={drawVersion} className={`edge-tv-drawing-overlay ${drawingMode ? "drawing-active" : ""}`} style={{ width: chartRef.current?.timeScale().width() ?? 0, height: hostRef.current ? hostRef.current.clientHeight - (chartRef.current?.timeScale().height() ?? 0) : 0 }} onPointerDown={startDrawing onPointerMove={moveDrawing} onPointerUp={finishDrawing} onPointerCancel={() => setDraft(null)} aria-label="Chart drawing surface">
+        {[...drawings, ...(draft ? [{ ...draft, id: -1 }] : [])].map(item => {
+          const c = drawingCoordinates(item);
+          if (!c) return null;
+          const width = chartRef.current?.timeScale().width() ?? 0;
+          const height = hostRef.current ? hostRef.current.clientHeight - (chartRef.current?.timeScale().height() ?? 0) : 0;
+          if (item.tool === "horizontal") return <line key={item.id} x1={0} x2={width} y1={c.y1} y2={c.y1} stroke="#f4bd45" strokeWidth="1.5" strokeDasharray="6 4" />;
+          if (item.tool === "vertical") return <line key={item.id} x1={c.x1} x2={c.x1} y1={0} y2={height} stroke="#f4bd45" strokeWidth="1.5" strokeDasharray="6 4" />;
+          return <line key={item.id} x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2} stroke="#f4bd45" strokeWidth="2" />;
+        })}
+      </svg>
+    </div>
   </div>;
 }

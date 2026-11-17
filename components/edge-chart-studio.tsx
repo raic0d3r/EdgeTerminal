@@ -80,8 +80,7 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
   const [replaySpeed, setReplaySpeed] = useState(1);
   const [dragging, setDragging] = useState(false);
   const [drawingTool, setDrawingTool] = useState<"cursor" | "trend" | "horizontal" | "vertical">("cursor");
-  const [drawings, setDrawings] = useState<Array<{ id: number; tool: "trend" | "horizontal" | "vertical"; x1: number; y1: number; x2: number; y2: number }>>([]);
-  const drawingRef = useRef<{ tool: "trend" | "horizontal" | "vertical"; x1: number; y1: number; x2: number; y2: number } | null>(null);
+  const [clearDrawingsVersion, setClearDrawingsVersion] = useState(0);
   const dragRef = useRef<{ x: number; end: number | null } | null>(null);
 
   async function load() {
@@ -216,7 +215,7 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
         <button type="button" title="Trend line" aria-label="Trend line" className={drawingTool === "trend" ? "selected" : ""} onClick={() => setDrawingTool("trend")}>／</button>
         <button type="button" title="Horizontal line" aria-label="Horizontal line" className={drawingTool === "horizontal" ? "selected" : ""} onClick={() => setDrawingTool("horizontal")}>━</button>
         <button type="button" title="Vertical line" aria-label="Vertical line" className={drawingTool === "vertical" ? "selected" : ""} onClick={() => setDrawingTool("vertical")}>┃</button>
-        <button type="button" title="Clear drawings" aria-label="Clear drawings" onClick={() => setDrawings([])}>⌫</button>
+        <button type="button" title="Clear drawings" aria-label="Clear drawings" onClick={() => setClearDrawingsVersion(v => v + 1)}>⌫</button>
       </aside>
       <div className="edge-chart-plot-stack">
         <EdgeLightweightChart
@@ -226,6 +225,8 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
           indicators={active}
           livePrice={replayIndex === null && viewEnd === null ? livePrice : null}
           quoteMode={quoteMode}
+          drawingTool={drawingTool}
+          clearDrawingsVersion={clearDrawingsVersion}
           toolbarControls={<>
             <div className="edge-tv-indicator-menu-wrap">
               <button type="button" className={`edge-tv-indicator-menu-trigger ${indicatorsOpen ? "active" : ""}`} aria-haspopup="menu" aria-expanded={indicatorsOpen} onClick={() => setIndicatorsOpen(v => !v)}>▥ Indicators <span className="edge-tv-caret">⌄</span></button>

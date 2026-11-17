@@ -2460,3 +2460,9 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
  .edge-tv-chart-toolbar{overflow-x:auto!important;overflow-y:visible!important}
  .edge-chart-canvas-wrap{height:clamp(520px,72vh,780px)!important;min-height:520px!important}
 }
+
+/* Interactive drawing layer for broker chart drawing tools. */
+.edge-tv-chart-stage{position:relative;width:100%;height:100%;min-height:420px;flex:1 1 auto;overflow:hidden}
+.edge-tv-chart-stage .edge-tv-chart-host{position:absolute;inset:0;width:100%;height:100%;min-height:0}
+.edge-tv-drawing-overlay{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:5}
+.edge-tv-drawing-overlay.drawing-active{pointer-events:auto;cursor:crosshair;touch-action:none}
