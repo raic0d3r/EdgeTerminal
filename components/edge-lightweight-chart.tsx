@@ -106,7 +106,7 @@ export default function EdgeLightweightChart({
     setCanUndo(true); setCanRedo(redoStackRef.current.length > 0); setSelectedDrawing(null);
   }
   const [selectedDrawing, setSelectedDrawing] = useState<number | null>(null);
-  const dragDrawingRef = useRef<{ id: number; startX: number; startY: number; original: any } | null>(null);
+  const dragDrawingRef = useRef<{ id: number; startX: number; startY: number; handle?: "start" | "end" | null; original: any } | null>(null);
   const [draft, setDraft] = useState<{ tool: "trend" | "horizontal" | "vertical" | "fib" | "fib-extension" | "long-position" | "short-position" | "position-forecast" | "bars-pattern" | "ghost-feed" | "sector" | "anchored-vwap" | "fixed-range-volume" | "anchored-volume" | "price-range" | "date-range" | "date-price-range"; t1: any; p1: number; t2: any; p2: number; t3?: any; p3?: number; locked?: boolean; text?: string } | null>(null);
   const [drawVersion, setDrawVersion] = useState(0);
   const [fibStep, setFibStep] = useState(0);
@@ -172,6 +172,7 @@ export default function EdgeLightweightChart({
       const hit = target.closest?.("[data-drawing-id]") as SVGElement | null;
       const rawId = hit?.getAttribute("data-drawing-id");
       const id = rawId == null ? NaN : Number(rawId);
+      const handle = target.closest?.("[data-drawing-handle]")?.getAttribute("data-drawing-handle") as "start" | "end" | null;
       if (!Number.isFinite(id)) { setSelectedDrawing(null); dragDrawingRef.current = null; return; }
       const item = drawings.find(d => d.id === id);
       if (!item) return;
@@ -182,7 +183,7 @@ export default function EdgeLightweightChart({
       event.preventDefault();
       event.stopPropagation();
       try { event.currentTarget.setPointerCapture(event.pointerId); } catch {}
-      dragDrawingRef.current = { id, startX: event.clientX, startY: event.clientY, original: { ...item, point } };
+      dragDrawingRef.current = { id, startX: event.clientX, startY: event.clientY, handle, original: { ...item, point } };
       return;
     }
     const point = drawingPoint(event);
@@ -198,6 +199,12 @@ export default function EdgeLightweightChart({
     if (tool === "fib-extension" && draft?.tool === "fib-extension") {
       if (fibStep === 1) { setDraft(current => current ? { ...current, t2: point.time, p2: point.price } : null); setFibStep(2); }
       else if (fibStep === 2) { setDraft(current => current ? { ...current, t3: point.time, p3: point.price } : null); setFibStep(3); }
+      return;
+    }
+    if (tool === "anchored-volume") {
+      const last = cleanCandles.at(-1);
+      const endTime = last ? last.epoch : point.time;
+      recordDrawingChange([...drawingsRef.current, { id: Date.now(), tool, t1: point.time, p1: point.price, t2: endTime, p2: last?.close ?? point.price }]);
       return;
     }
     setDraft({ tool, t1: point.time, p1: point.price, t2: point.time, p2: point.price });
@@ -218,7 +225,12 @@ export default function EdgeLightweightChart({
         const x = timeScale?.timeToCoordinate(value);
         return x == null ? value : (timeScale.coordinateToTime(x + shift) ?? value);
       };
-      setDrawings(current => { const next = current.map(d => d.id !== drag.id ? d : d.tool === "horizontal" ? { ...d, p1: d.p1 + deltaPrice, p2: d.p2 + deltaPrice } : d.tool === "vertical" ? { ...d, t1: shiftedTime(d.t1), t2: shiftedTime(d.t2) } : { ...d, t1: shiftedTime(d.t1), t2: shiftedTime(d.t2), ...(d.t3 != null ? { t3: shiftedTime(d.t3), p3: (d.p3 ?? 0) + deltaPrice } : {}), p1: d.p1 + deltaPrice, p2: d.p2 + deltaPrice }); drawingsRef.current = next; return next; });
+      setDrawings(current => { const next = current.map(d => {
+        if (d.id !== drag.id) return d;
+        if (drag.handle === "start") return { ...d, t1: point.time, p1: point.price };
+        if (drag.handle === "end") return { ...d, t2: point.time, p2: point.price };
+        return d.tool === "horizontal" ? { ...d, p1: d.p1 + deltaPrice, p2: d.p2 + deltaPrice } : d.tool === "vertical" ? { ...d, t1: shiftedTime(d.t1), t2: shiftedTime(d.t2) } : { ...d, t1: shiftedTime(d.t1), t2: shiftedTime(d.t2), ...(d.t3 != null ? { t3: shiftedTime(d.t3), p3: (d.p3 ?? 0) + deltaPrice } : {}), p1: d.p1 + deltaPrice, p2: d.p2 + deltaPrice };
+      }); drawingsRef.current = next; return next; });
       dragDrawingRef.current = { ...drag, original: { ...original, point } };
       return;
     }
@@ -540,13 +552,52 @@ export default function EdgeLightweightChart({
             return <g key={item.id} data-drawing-id={item.id}><polyline points={points.join(" ")} fill="none" stroke={selected?"#60a5fa":"#d6a94b"} strokeWidth="2" data-drawing-id={item.id}/><line x1={c.x1} x2={c.x1} y1="0" y2={height} stroke="transparent" strokeWidth="16" data-drawing-id={item.id}/></g>;
           }
           if (item.tool === "fixed-range-volume" || item.tool === "anchored-volume") {
-            const lo = Math.min(Number(item.t1),Number(item.t2)), hi = Math.max(Number(item.t1),Number(item.t2));
+            const lo = item.tool === "anchored-volume" ? Number(item.t1) : Math.min(Number(item.t1), Number(item.t2));
+            const hi = item.tool === "anchored-volume" ? (cleanCandles.at(-1)?.epoch ?? Number(item.t2)) : Math.max(Number(item.t1), Number(item.t2));
             const rows = cleanCandles.filter(row => row.epoch >= lo && row.epoch <= hi);
-            const bins = 16, min = Math.min(...rows.map(r=>r.low),item.p1,item.p2), max = Math.max(...rows.map(r=>r.high),item.p1,item.p2);
-            const totals = Array.from({length:bins},()=>0);
-            rows.forEach(row=>{const idx=Math.max(0,Math.min(bins-1,Math.floor(((row.high+row.low)/2-min)/Math.max(max-min,1e-9)*bins)));totals[idx]+=Math.max(1,Number(row.volume)||1);});
-            const maxVol=Math.max(1,...totals), x0=Math.max(c.x1,c.x2);
-            return <g key={item.id} data-drawing-id={item.id}>{totals.map((v,i)=>{const price=min+(i+.5)/bins*(max-min), y=candleSeriesRef.current?.priceToCoordinate(price);if(y==null)return null;return <rect key={i} x={x0} y={y-4} width={Math.max(2,v/maxVol*110)} height={8} fill="#60a5fa" fillOpacity=".48" stroke="#93c5fd" strokeWidth=".4" data-drawing-id={item.id}/>;})}<rect x={Math.min(c.x1,c.x2)} y={0} width={Math.max(12,Math.abs(c.x2-c.x1))} height={height} fill="transparent" stroke="transparent" data-drawing-id={item.id}/></g>;
+            if (!rows.length) return null;
+            const bins = 32;
+            const min = Math.min(...rows.map(r => r.low));
+            const max = Math.max(...rows.map(r => r.high));
+            const step = Math.max((max - min) / bins, 1e-9);
+            const totals = Array.from({ length: bins }, () => 0);
+            // Candle volume is distributed evenly over the price bins crossed by each candle.
+            // This is an OHLCV estimate, not exchange bid/ask volume-at-price.
+            rows.forEach(row => {
+              const first = Math.max(0, Math.min(bins - 1, Math.floor((row.low - min) / step)));
+              const last = Math.max(0, Math.min(bins - 1, Math.floor((row.high - min) / step)));
+              const count = Math.max(1, last - first + 1);
+              const perBin = Math.max(1, Number(row.volume) || 1) / count;
+              for (let i = first; i <= last; i++) totals[i] += perBin;
+            });
+            const maxVol = Math.max(1, ...totals);
+            const pocIndex = totals.indexOf(maxVol);
+            const totalVol = totals.reduce((a, b) => a + b, 0);
+            let valueVol = 0, lowIndex = pocIndex, highIndex = pocIndex;
+            while (valueVol < totalVol * .7 && (lowIndex > 0 || highIndex < bins - 1)) {
+              const below = lowIndex > 0 ? totals[lowIndex - 1] : -1;
+              const above = highIndex < bins - 1 ? totals[highIndex + 1] : -1;
+              if (above > below) { highIndex++; valueVol += Math.max(0, above); }
+              else { lowIndex--; valueVol += Math.max(0, below); }
+            }
+            const widthMax = item.tool === "anchored-volume" ? Math.min(190, width * .24) : Math.min(190, Math.max(90, Math.abs(c.x2 - c.x1) * .42));
+            const anchorX = item.tool === "anchored-volume" ? width : Math.max(c.x1, c.x2);
+            const xFor = (v: number) => item.tool === "anchored-volume" ? anchorX - (v / maxVol) * widthMax : Math.min(c.x1, c.x2) + (v / maxVol) * widthMax;
+            const poc = min + (pocIndex + .5) * step;
+            const vah = min + (highIndex + 1) * step;
+            const val = min + lowIndex * step;
+            const startX = chartRef.current?.timeScale().timeToCoordinate(item.t1) ?? c.x1;
+            const endX = item.tool === "anchored-volume" ? width : (chartRef.current?.timeScale().timeToCoordinate(item.t2) ?? c.x2);
+            return <g key={item.id} data-drawing-id={item.id} style={{ pointerEvents: "all", cursor: item.locked ? "not-allowed" : "move" }}>
+              {item.tool === "fixed-range-volume" && <rect x={Math.min(startX, endX)} y={0} width={Math.max(8, Math.abs(endX - startX))} height={height} fill="#60a5fa" fillOpacity=".035" stroke="#60a5fa" strokeDasharray="4 4" data-drawing-id={item.id}/>}
+              {totals.map((v, i) => { const price = min + (i + .5) * step; const y = candleSeriesRef.current?.priceToCoordinate(price); if (y == null) return null; const inValue = i >= lowIndex && i <= highIndex; const x = xFor(v); return <rect key={i} x={item.tool === "anchored-volume" ? x : xFor(0)} y={y - 2.5} width={Math.max(1, Math.abs(x - (item.tool === "anchored-volume" ? anchorX : xFor(0))))} height={5} fill={inValue ? "#22c1d6" : "#ff9800"} fillOpacity=".92" data-drawing-id={item.id}/>; })}
+              <line x1={item.tool === "anchored-volume" ? width - widthMax : Math.min(startX, endX)} x2={item.tool === "anchored-volume" ? width : Math.max(startX, endX) + widthMax} y1={candleSeriesRef.current?.priceToCoordinate(poc) ?? 0} y2={candleSeriesRef.current?.priceToCoordinate(poc) ?? 0} stroke="#facc15" strokeWidth="2" data-drawing-id={item.id}/>
+              <line x1={item.tool === "anchored-volume" ? width - widthMax : Math.min(startX, endX)} x2={item.tool === "anchored-volume" ? width : Math.max(startX, endX) + widthMax} y1={candleSeriesRef.current?.priceToCoordinate(vah) ?? 0} y2={candleSeriesRef.current?.priceToCoordinate(vah) ?? 0} stroke="#64748b" strokeWidth="1" strokeDasharray="3 3" data-drawing-id={item.id}/>
+              <line x1={item.tool === "anchored-volume" ? width - widthMax : Math.min(startX, endX)} x2={item.tool === "anchored-volume" ? width : Math.max(startX, endX) + widthMax} y1={candleSeriesRef.current?.priceToCoordinate(val) ?? 0} y2={candleSeriesRef.current?.priceToCoordinate(val) ?? 0} stroke="#64748b" strokeWidth="1" strokeDasharray="3 3" data-drawing-id={item.id}/>
+              <circle cx={startX} cy={c.y1} r="6" fill="#dbeafe" stroke="#2563eb" strokeWidth="2" data-drawing-id={item.id} data-drawing-handle="start" style={{ pointerEvents: "all", cursor: "ew-resize" }}/>
+              {item.tool === "fixed-range-volume" && <circle cx={endX} cy={c.y2} r="6" fill="#dbeafe" stroke="#2563eb" strokeWidth="2" data-drawing-id={item.id} data-drawing-handle="end" style={{ pointerEvents: "all", cursor: "nwse-resize" }}/>}
+              <text x={item.tool === "anchored-volume" ? Math.max(4, width - widthMax) : Math.min(startX, endX)} y="16" fill="#93c5fd" fontSize="10" data-drawing-id={item.id}>POC {poc.toFixed(digits)} · VAH {vah.toFixed(digits)} · VAL {val.toFixed(digits)}</text>
+            </g>;
           }
           if (item.tool === "bars-pattern" || item.tool === "ghost-feed") {
             const a=Math.min(Number(item.t1),Number(item.t2)), b=Math.max(Number(item.t1),Number(item.t2));
