@@ -116,9 +116,11 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
   const [replayPlaying, setReplayPlaying] = useState(false);
   const [replaySpeed, setReplaySpeed] = useState(1);
   const [dragging, setDragging] = useState(false);
-  const [drawingTool, setDrawingTool] = useState<"cursor" | "trend" | "horizontal" | "vertical" | "label" | "fib" | "fib-extension">("cursor");
+  const [drawingTool, setDrawingTool] = useState<"cursor" | "trend" | "horizontal" | "vertical" | "label" | "fib" | "fib-extension" | "long-position" | "short-position" | "position-forecast" | "bars-pattern" | "ghost-feed" | "sector" | "anchored-vwap" | "fixed-range-volume" | "anchored-volume" | "price-range" | "date-range" | "date-price-range">("cursor");
   const [drawingCategory, setDrawingCategory] = useState<string | null>(null);
   const [clearDrawingsVersion, setClearDrawingsVersion] = useState(0);
+  const [globalDrawingsLocked, setGlobalDrawingsLocked] = useState(false);
+  const [drawingsVisible, setDrawingsVisible] = useState(true);
   const dragRef = useRef<{ x: number; end: number | null } | null>(null);
 
   async function load() {
@@ -242,16 +244,17 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
           <button type="button" title="Cursor" aria-label="Cursor" className={drawingTool === "cursor" ? "selected" : ""} onClick={() => { setDrawingTool("cursor"); setDrawingCategory(null); }}><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 3v15M24 30v15M3 24h15M30 24h15"/></svg></button>
           <button type="button" title="Lines" aria-label="Lines" className={drawingCategory === "lines" || ["trend","horizontal","vertical"].includes(drawingTool) ? "selected" : ""} onClick={() => setDrawingCategory(v => v === "lines" ? null : "lines")}><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M4 24h40"/><circle cx="24" cy="24" r="5"/></svg></button>
           <button type="button" title="Fibonacci tools" aria-label="Fibonacci tools" className={drawingCategory === "fib" || drawingTool.startsWith("fib") ? "selected" : ""} onClick={() => setDrawingCategory(v => v === "fib" ? null : "fib")}><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M5 10h30M13 20h30M5 30h30M13 40h30"/><circle cx="38" cy="20" r="4"/><circle cx="7" cy="40" r="4"/></svg></button>
-          <button type="button" title="Pattern tools" aria-label="Pattern tools" className={drawingCategory === "patterns" ? "selected" : ""} onClick={() => setDrawingCategory(v => v === "patterns" ? null : "patterns")}><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M7 39 15 9 30 29 40 12 44 37 15 9"/><circle cx="7" cy="39" r="3.5"/><circle cx="15" cy="9" r="3.5"/><circle cx="30" cy="29" r="3.5"/><circle cx="40" cy="12" r="3.5"/><circle cx="44" cy="37" r="3.5"/></svg></button>
+          <button type="button" title="Forecasting tools" aria-label="Forecasting tools" className={drawingCategory === "forecast" ? "selected" : ""} onClick={() => setDrawingCategory(v => v === "forecast" ? null : "forecast")}><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M7 39 15 9 30 29 40 12 44 37 15 9"/><circle cx="7" cy="39" r="3.5"/><circle cx="15" cy="9" r="3.5"/><circle cx="30" cy="29" r="3.5"/><circle cx="40" cy="12" r="3.5"/><circle cx="44" cy="37" r="3.5"/></svg></button>
+          <button type="button" title="Volume-based tools" aria-label="Volume-based tools" className={drawingCategory === "volume" ? "selected" : ""} onClick={() => setDrawingCategory(v => v === "volume" ? null : "volume")}><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 39V23h7v16M21 39V10h7v29M34 39V17h7v22M5 43h39"/></svg></button>
           <button type="button" title="Text and notes" aria-label="Text and notes" className={drawingTool === "label" ? "selected" : ""} onClick={() => { setDrawingTool("label"); setDrawingCategory(null); }}><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M7 9h34M24 9v33M17 42h14"/></svg></button>
           <button type="button" title="Measure" aria-label="Measure" className={drawingCategory === "measure" ? "selected" : ""} onClick={() => setDrawingCategory(v => v === "measure" ? null : "measure")}><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M7 37 37 7l5 5-30 30zM17 27l5 5M23 21l5 5M29 15l5 5"/></svg></button>
           <span className="edge-drawing-toolbar-divider" />
           <button type="button" title="Zoom in" aria-label="Zoom in" onClick={() => setVisibleCount(v => Math.max(25, Math.round(v / 1.25)))}><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="20" cy="20" r="13"/><path d="M30 30 43 43M20 13v14M13 20h14"/></svg></button>
           <span className="edge-drawing-toolbar-divider" />
           <button type="button" title="Magnet" aria-label="Magnet" onClick={() => setDrawingCategory(v => v === "magnet" ? null : "magnet")}><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 27V16a14 14 0 0 1 28 0v11h-9V16a5 5 0 0 0-10 0v11zM10 27v8h9v-8M29 27v8h9v-8"/></svg></button>
-          <button type="button" title="Lock drawings" aria-label="Lock drawings" onClick={() => setDrawingCategory(v => v === "lock" ? null : "lock")}><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 21 34 4l7 7-24 24H10zM10 21l10 10M34 4l7 7M34 31v-3a6 6 0 0 1 12 0"/><rect x="31" y="31" width="15" height="13" rx="2"/></svg></button>
-          <button type="button" title="Unlock drawings" aria-label="Unlock drawings" onClick={() => setDrawingCategory(v => v === "unlock" ? null : "unlock")}><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="8" y="21" width="32" height="23" rx="4"/><path d="M16 21v-7a9 9 0 0 1 17-4"/><circle cx="24" cy="32" r="2"/></svg></button>
-          <button type="button" title="Hide drawings" aria-label="Hide drawings" onClick={() => setDrawingCategory(v => v === "visibility" ? null : "visibility")}><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M3 24s8-14 21-14 21 14 21 14-8 14-21 14S3 24 3 24z"/><circle cx="24" cy="24" r="7"/><path d="M6 43 42 5"/></svg></button>
+          <button type="button" title={globalDrawingsLocked ? "Unlock all drawings" : "Lock all drawings"} aria-label={globalDrawingsLocked ? "Unlock all drawings" : "Lock all drawings"} aria-pressed={globalDrawingsLocked} className={globalDrawingsLocked ? "selected" : ""} onClick={() => setGlobalDrawingsLocked(v => !v)}><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="8" y="21" width="32" height="23" rx="4"/><path d={globalDrawingsLocked ? "M16 21v-7a8 8 0 0 1 16 0v7" : "M16 21v-7a8 8 0 0 1 16 0"}/><circle cx="24" cy="32" r="2"/></svg></button>
+          
+          <button type="button" title={drawingsVisible ? "Hide all drawings" : "Show all drawings"} aria-label={drawingsVisible ? "Hide all drawings" : "Show all drawings"} aria-pressed={!drawingsVisible} className={!drawingsVisible ? "selected" : ""} onClick={() => setDrawingsVisible(v => !v)}><svg viewBox="0 0 48 48" aria-hidden="true">{drawingsVisible ? <><path d="M3 24s8-14 21-14 21 14 21 14-8 14-21 14S3 24 3 24z"/><circle cx="24" cy="24" r="7"/></> : <><path d="M3 24s8-14 21-14 21 14 21 14-8 14-21 14S3 24 3 24z"/><path d="M6 43 42 5"/></>}</svg></button>
           <span className="edge-drawing-toolbar-divider" />
           <button type="button" title="Clear drawings" aria-label="Clear drawings" onClick={() => setClearDrawingsVersion(v => v + 1)}><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 13h32M18 13V7h12v6M12 13l3 30h18l3-30"/></svg></button>
         </div>
@@ -269,7 +272,19 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
           <button type="button" role="menuitem" onClick={() => { setDrawingTool("fib"); setDrawingCategory(null); }}><span className="edge-drawing-submenu-icon">F</span>Fib retracement</button>
           <button type="button" role="menuitem" onClick={() => { setDrawingTool("fib-extension"); setDrawingCategory(null); }}><span className="edge-drawing-submenu-icon">Fₓ</span>Trend-based Fib extension</button>
         </div>}
-        {drawingCategory === "measure" && <div className="edge-drawing-submenu" role="menu"><div className="edge-drawing-submenu-heading">MEASURE</div><p>Measurement tools are not available yet.</p></div>}
+        {drawingCategory === "forecast" && <div className="edge-drawing-submenu" role="menu" aria-label="Forecasting tools">
+          <div className="edge-drawing-submenu-heading">FORECASTING</div>
+          {[
+            ["long-position","Long position"],["short-position","Short position"],["position-forecast","Position forecast"],["bars-pattern","Bars pattern"],["ghost-feed","Ghost feed"],["sector","Sector"]
+          ].map(([tool,label]) => <button key={tool} type="button" role="menuitem" className={drawingTool===tool?"selected":""} onClick={()=>{setDrawingTool(tool as typeof drawingTool);setDrawingCategory(null);}}><span className="edge-drawing-submenu-icon">⌁</span>{label}</button>)}
+        </div>}
+        {drawingCategory === "volume" && <div className="edge-drawing-submenu" role="menu" aria-label="Volume-based tools">
+          <div className="edge-drawing-submenu-heading">VOLUME-BASED</div>
+          {[["anchored-vwap","Anchored VWAP"],["fixed-range-volume","Fixed range volume profile"],["anchored-volume","Anchored volume profile"]].map(([tool,label])=><button key={tool} type="button" role="menuitem" onClick={()=>{setDrawingTool(tool as typeof drawingTool);setDrawingCategory(null);}}><span className="edge-drawing-submenu-icon">▥</span>{label}</button>)}
+        </div>}
+        {drawingCategory === "measure" && <div className="edge-drawing-submenu" role="menu"><div className="edge-drawing-submenu-heading">MEASURERS</div>
+          {[["price-range","Price range"],["date-range","Date range"],["date-price-range","Date and price range"]].map(([tool,label])=><button key={tool} type="button" role="menuitem" onClick={()=>{setDrawingTool(tool as typeof drawingTool);setDrawingCategory(null);}}><span className="edge-drawing-submenu-icon">↔</span>{label}</button>)}
+        </div>}
       </aside>}
       <div className="edge-chart-plot-stack">
         <EdgeLightweightChart
@@ -283,6 +298,8 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
           quoteMode={quoteMode}
           drawingTool={drawingTool}
           clearDrawingsVersion={clearDrawingsVersion}
+          globalDrawingsLocked={globalDrawingsLocked}
+          drawingsVisible={drawingsVisible}
           toolbarControls={<>
             <div className="edge-tv-indicator-menu-wrap">
               <button type="button" className={`edge-tv-indicator-menu-trigger ${indicatorsOpen ? "active" : ""}`} aria-haspopup="menu" aria-expanded={indicatorsOpen} onClick={() => setIndicatorsOpen(v => !v)}>▥ Indicators <span className="edge-tv-caret">⌄</span></button>

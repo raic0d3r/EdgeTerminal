@@ -70,13 +70,13 @@ function zigZagPoints(rows: Candle[], depth = 12, deviationPercent = 0.5) {
 }
 
 export default function EdgeLightweightChart({
-  symbol, interval, candles, indicators, fvgSettings = { enabled: false, filter: "FVG Only", minGap: 0, extendRight: true }, livePrice, quoteMode, drawingTool = "cursor", clearDrawingsVersion = 0, onChartType, onIntervalChange, toolbarControls, toolbarActions,
+  symbol, interval, candles, indicators, fvgSettings = { enabled: false, filter: "FVG Only", minGap: 0, extendRight: true }, livePrice, quoteMode, drawingTool = "cursor", clearDrawingsVersion = 0, onChartType, onIntervalChange, toolbarControls, toolbarActions, globalDrawingsLocked = false, drawingsVisible = true,
 }: {
   symbol: string; interval: string; candles: Candle[]; indicators: Indicator[]; fvgSettings?: FvgSettings;
-  livePrice: number | null; quoteMode: string; drawingTool?: "cursor" | "trend" | "horizontal" | "vertical" | "label" | "fib" | "fib-extension"; clearDrawingsVersion?: number; onChartType?: (type: string) => void; onIntervalChange?: (value: string) => void; toolbarControls?: ReactNode; toolbarActions?: ReactNode;
+  livePrice: number | null; quoteMode: string; drawingTool?: "cursor" | "trend" | "horizontal" | "vertical" | "label" | "fib" | "fib-extension" | "long-position" | "short-position" | "position-forecast" | "bars-pattern" | "ghost-feed" | "sector" | "anchored-vwap" | "fixed-range-volume" | "anchored-volume" | "price-range" | "date-range" | "date-price-range"; clearDrawingsVersion?: number; onChartType?: (type: string) => void; onIntervalChange?: (value: string) => void; toolbarControls?: ReactNode; toolbarActions?: ReactNode; globalDrawingsLocked?: boolean; drawingsVisible?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
-  type Drawing = { id: number; tool: "trend" | "horizontal" | "vertical" | "label" | "fib" | "fib-extension"; t1: any; p1: number; t2: any; p2: number; t3?: any; p3?: number; text?: string; locked?: boolean };
+  type Drawing = { id: number; tool: "trend" | "horizontal" | "vertical" | "label" | "fib" | "fib-extension" | "long-position" | "short-position" | "position-forecast" | "bars-pattern" | "ghost-feed" | "sector" | "anchored-vwap" | "fixed-range-volume" | "anchored-volume" | "price-range" | "date-range" | "date-price-range"; t1: any; p1: number; t2: any; p2: number; t3?: any; p3?: number; text?: string; locked?: boolean };
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
@@ -107,7 +107,7 @@ export default function EdgeLightweightChart({
   }
   const [selectedDrawing, setSelectedDrawing] = useState<number | null>(null);
   const dragDrawingRef = useRef<{ id: number; startX: number; startY: number; original: any } | null>(null);
-  const [draft, setDraft] = useState<{ tool: "trend" | "horizontal" | "vertical" | "fib" | "fib-extension"; t1: any; p1: number; t2: any; p2: number; t3?: any; p3?: number; locked?: boolean; text?: string } | null>(null);
+  const [draft, setDraft] = useState<{ tool: "trend" | "horizontal" | "vertical" | "fib" | "fib-extension" | "long-position" | "short-position" | "position-forecast" | "bars-pattern" | "ghost-feed" | "sector" | "anchored-vwap" | "fixed-range-volume" | "anchored-volume" | "price-range" | "date-range" | "date-price-range"; t1: any; p1: number; t2: any; p2: number; t3?: any; p3?: number; locked?: boolean; text?: string } | null>(null);
   const [drawVersion, setDrawVersion] = useState(0);
   const [fibStep, setFibStep] = useState(0);
   const chartRef = useRef<any>(null);
@@ -129,6 +129,14 @@ export default function EdgeLightweightChart({
   // A clear action is represented by the version counter.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clearDrawingsVersion]);
+  useEffect(() => {
+    const current = drawingsRef.current;
+    if (current.some(d => Boolean(d.locked) !== globalDrawingsLocked)) {
+      recordDrawingChange(current.map(d => ({ ...d, locked: globalDrawingsLocked })));
+      setSelectedDrawing(null);
+      dragDrawingRef.current = null;
+    }
+  }, [globalDrawingsLocked]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -184,7 +192,7 @@ export default function EdgeLightweightChart({
       if (text?.trim()) recordDrawingChange([...drawingsRef.current, { id: Date.now(), tool: "label", t1: point.time, p1: point.price, t2: point.time, p2: point.price, text: text.trim() }]);
       return;
     }
-    const tool = drawingTool as "trend" | "horizontal" | "vertical" | "fib" | "fib-extension";
+    const tool = drawingTool as Exclude<typeof drawingTool, "cursor" | "label">;
     event.currentTarget.setPointerCapture(event.pointerId);
     setSelectedDrawing(null);
     if (tool === "fib-extension" && draft?.tool === "fib-extension") {
@@ -234,7 +242,7 @@ export default function EdgeLightweightChart({
     setDraft(null);
     setFibStep(0);
   }
-  function drawingCoordinates(item: { tool: "trend" | "horizontal" | "vertical" | "label" | "fib" | "fib-extension"; t1: any; p1: number; t2: any; p2: number; t3?: any; p3?: number }) {
+  function drawingCoordinates(item: { tool: "trend" | "horizontal" | "vertical" | "label" | "fib" | "fib-extension" | "long-position" | "short-position" | "position-forecast" | "bars-pattern" | "ghost-feed" | "sector" | "anchored-vwap" | "fixed-range-volume" | "anchored-volume" | "price-range" | "date-range" | "date-price-range"; t1: any; p1: number; t2: any; p2: number; t3?: any; p3?: number }) {
     const chart = chartRef.current;
     const series = candleSeriesRef.current;
     if (!chart || !series) return null;
@@ -450,7 +458,7 @@ export default function EdgeLightweightChart({
     {loadError && <div className="edge-tv-load-error">{loadError}</div>}
     <div className="edge-tv-chart-stage">
       <div ref={hostRef} className="edge-tv-chart-host" aria-label={`${symbol} ${interval} broker candlestick chart`} />
-      {fvgSettings?.enabled && <div className="edge-fvg-overlay" style={{ width: chartRef.current?.timeScale().width() ?? 0, height: hostRef.current ? hostRef.current.clientHeight - (chartRef.current?.timeScale().height() ?? 0) : 0 }} aria-label="Fair Value Gap zones">
+      {drawingsVisible && fvgSettings?.enabled && <div className="edge-fvg-overlay" style={{ width: chartRef.current?.timeScale().width() ?? 0, height: hostRef.current ? hostRef.current.clientHeight - (chartRef.current?.timeScale().height() ?? 0) : 0 }} aria-label="Fair Value Gap zones">
         {fvgZones.map(zone => {
           const left = chartRef.current?.timeScale().timeToCoordinate(zone.start);
           const top = candleSeriesRef.current?.priceToCoordinate(zone.top);
@@ -461,7 +469,7 @@ export default function EdgeLightweightChart({
           return <div key={zone.id} className={`edge-fvg-zone ${zone.direction}`} style={{ left, top: Math.min(top, bottom), width: Math.max(3, right - left), height: Math.max(2, Math.abs(bottom - top)) }}><span>{zone.label}</span></div>;
         })}
       </div>}
-      <svg data-draw-version={drawVersion} className={`edge-tv-drawing-overlay ${drawingMode ? "drawing-active" : "cursor-active"}`} style={{ width: chartRef.current?.timeScale().width() ?? 0, height: hostRef.current ? hostRef.current.clientHeight - (chartRef.current?.timeScale().height() ?? 0) : 0 }} onPointerDown={startDrawing} onPointerMove={moveDrawing} onPointerUp={finishDrawing} onPointerCancel={() => { setDraft(null); setFibStep(0); dragDrawingRef.current = null; }} aria-label="Chart drawing surface">
+      <svg data-draw-version={drawVersion} className={`edge-tv-drawing-overlay ${drawingMode ? "drawing-active" : "cursor-active"}`} style={{ display: drawingsVisible ? undefined : "none", width: chartRef.current?.timeScale().width() ?? 0, height: hostRef.current ? hostRef.current.clientHeight - (chartRef.current?.timeScale().height() ?? 0) : 0 }} onPointerDown={startDrawing} onPointerMove={moveDrawing} onPointerUp={finishDrawing} onPointerCancel={() => { setDraft(null); setFibStep(0); dragDrawingRef.current = null; }} aria-label="Chart drawing surface">
         {[...drawings, ...(draft ? [{ ...draft, id: -1 }] : [])].map(item => {
           const c = drawingCoordinates(item);
           if (!c) return null;
@@ -469,6 +477,57 @@ export default function EdgeLightweightChart({
           const height = hostRef.current ? hostRef.current.clientHeight - (chartRef.current?.timeScale().height() ?? 0) : 0;
           const selected = selectedDrawing === item.id;
           const common = { "data-drawing-id": String(item.id), stroke: selected ? "#60a5fa" : "#f4bd45", strokeWidth: selected ? 3 : 2, style: { pointerEvents: "stroke" as const, cursor: item.locked ? "not-allowed" : "move" } };
+          if (["long-position", "short-position", "position-forecast", "price-range", "date-range", "date-price-range"].includes(item.tool)) {
+            const top = Math.min(c.y1, c.y2), bottom = Math.max(c.y1, c.y2);
+            const left = Math.min(c.x1, c.x2), right = Math.max(c.x1, c.x2);
+            const bullish = item.tool === "long-position";
+            const color = bullish ? "#089981" : item.tool === "short-position" ? "#f23645" : "#60a5fa";
+            const entry = item.p1, target = item.p2;
+            const change = target - entry;
+            const pct = entry ? (change / entry) * 100 : 0;
+            const label = item.tool === "long-position" ? `LONG · ${Math.abs(pct).toFixed(2)}%` :
+              item.tool === "short-position" ? `SHORT · ${Math.abs(pct).toFixed(2)}%` :
+              item.tool === "position-forecast" ? "POSITION FORECAST" :
+              item.tool === "price-range" ? `${change >= 0 ? "+" : ""}${change.toFixed(digits)} (${pct.toFixed(2)}%)` :
+              item.tool === "date-range" ? `${Math.max(1, Math.round(Math.abs(Number(c.x2)-Number(c.x1)) / 8))} bars` : `${change.toFixed(digits)} · ${Math.abs(right-left).toFixed(0)}px`;
+            return <g key={item.id} data-drawing-id={item.id} style={{ pointerEvents: "all", cursor: item.locked ? "not-allowed" : "move" }}>
+              <rect x={left} y={top} width={Math.max(18,right-left)} height={Math.max(18,bottom-top)} fill={color} fillOpacity={item.tool.includes("position") ? .16 : .08} stroke={selected ? "#60a5fa" : color} strokeWidth="1.5" strokeDasharray={item.tool.includes("range") ? "4 3" : undefined} data-drawing-id={item.id}/>
+              {item.tool.includes("position") && <><line x1={left} x2={right} y1={c.y1} y2={c.y1} stroke={color} strokeWidth="2" data-drawing-id={item.id}/><line x1={left} x2={right} y1={c.y2} y2={c.y2} stroke={color} strokeWidth="2" data-drawing-id={item.id}/></>}
+              <text x={left+6} y={Math.max(14,top+16)} fill={color} fontSize="12" fontWeight="600" data-drawing-id={item.id}>{label}</text>
+              <rect x={left-8} y={top-8} width={Math.max(34,right-left+16)} height={Math.max(34,bottom-top+16)} fill="transparent" stroke="transparent" data-drawing-id={item.id}/>
+            </g>;
+          }
+          if (item.tool === "sector") {
+            const radius = Math.max(12, Math.hypot(c.x2-c.x1,c.y2-c.y1));
+            const angle = Math.atan2(c.y2-c.y1,c.x2-c.x1);
+            const ex = c.x1 + radius*Math.cos(angle), ey = c.y1 + radius*Math.sin(angle);
+            const sweep = angle >= 0 ? 1 : 0;
+            return <g key={item.id} data-drawing-id={item.id} style={{pointerEvents:"all",cursor:item.locked?"not-allowed":"move"}}><path d={`M ${c.x1} ${c.y1} L ${ex} ${c.y1} A ${radius} ${radius} 0 0 ${sweep} ${ex} ${ey} Z`} fill="#60a5fa" fillOpacity=".12" stroke={selected?"#60a5fa":"#d6a94b"} data-drawing-id={item.id}/></g>;
+          }
+          if (item.tool === "anchored-vwap") {
+            const start = Number(item.t1);
+            const rows = cleanCandles.filter(row => row.epoch >= start);
+            let pv = 0, vol = 0;
+            const points = rows.map(row => { const v=Math.max(1,Number(row.volume)||1); pv += ((row.high+row.low+row.close)/3)*v; vol += v; const x=chartRef.current?.timeScale().timeToCoordinate(row.epoch); const y=candleSeriesRef.current?.priceToCoordinate(pv/vol); return x==null||y==null?null:`${x},${y}`; }).filter(Boolean);
+            return <g key={item.id} data-drawing-id={item.id}><polyline points={points.join(" ")} fill="none" stroke={selected?"#60a5fa":"#d6a94b"} strokeWidth="2" data-drawing-id={item.id}/><line x1={c.x1} x2={c.x1} y1="0" y2={height} stroke="transparent" strokeWidth="16" data-drawing-id={item.id}/></g>;
+          }
+          if (item.tool === "fixed-range-volume" || item.tool === "anchored-volume") {
+            const lo = Math.min(Number(item.t1),Number(item.t2)), hi = Math.max(Number(item.t1),Number(item.t2));
+            const rows = cleanCandles.filter(row => row.epoch >= lo && row.epoch <= hi);
+            const bins = 16, min = Math.min(...rows.map(r=>r.low),item.p1,item.p2), max = Math.max(...rows.map(r=>r.high),item.p1,item.p2);
+            const totals = Array.from({length:bins},()=>0);
+            rows.forEach(row=>{const idx=Math.max(0,Math.min(bins-1,Math.floor(((row.high+row.low)/2-min)/Math.max(max-min,1e-9)*bins)));totals[idx]+=Math.max(1,Number(row.volume)||1);});
+            const maxVol=Math.max(1,...totals), x0=Math.max(c.x1,c.x2);
+            return <g key={item.id} data-drawing-id={item.id}>{totals.map((v,i)=>{const price=min+(i+.5)/bins*(max-min), y=candleSeriesRef.current?.priceToCoordinate(price);if(y==null)return null;return <rect key={i} x={x0} y={y-4} width={Math.max(2,v/maxVol*110)} height={8} fill="#60a5fa" fillOpacity=".48" stroke="#93c5fd" strokeWidth=".4" data-drawing-id={item.id}/>;})}<rect x={Math.min(c.x1,c.x2)} y={0} width={Math.max(12,Math.abs(c.x2-c.x1))} height={height} fill="transparent" stroke="transparent" data-drawing-id={item.id}/></g>;
+          }
+          if (item.tool === "bars-pattern" || item.tool === "ghost-feed") {
+            const a=Math.min(Number(item.t1),Number(item.t2)), b=Math.max(Number(item.t1),Number(item.t2));
+            const rows=cleanCandles.filter(row=>row.epoch>=a&&row.epoch<=b);
+            const shift=(chartRef.current?.timeScale().timeToCoordinate(item.t2)??c.x2)-(chartRef.current?.timeScale().timeToCoordinate(item.t1)??c.x1);
+            const baseX=Math.max(c.x1,c.x2)+12;
+            const scale=Math.max(.2,Math.min(2,Math.abs(c.y2-c.y1)/Math.max(1,Math.max(...rows.map(r=>r.high),item.p1)-Math.min(...rows.map(r=>r.low),item.p2))));
+            return <g key={item.id} data-drawing-id={item.id}>{rows.map((row,i)=>{const x=baseX+i*7;const yH=candleSeriesRef.current?.priceToCoordinate(item.p2+(row.high-item.p1)*scale);const yL=candleSeriesRef.current?.priceToCoordinate(item.p2+(row.low-item.p1)*scale);const yO=candleSeriesRef.current?.priceToCoordinate(item.p2+(row.open-item.p1)*scale);const yC=candleSeriesRef.current?.priceToCoordinate(item.p2+(row.close-item.p1)*scale);if([yH,yL,yO,yC].some(v=>v==null))return null;const col=row.close>=row.open?"#089981":"#f23645";return <g key={i} opacity={item.tool==="ghost-feed"?.35:.8}><line x1={x+3} x2={x+3} y1={yH!} y2={yL!} stroke={col}/><rect x={x} y={Math.min(yO!,yC!)} width="6" height={Math.max(1,Math.abs(yC!-yO!))} fill={col}/></g>;})}<rect x={Math.min(c.x1,c.x2)} y={0} width={Math.max(18,Math.abs(c.x2-c.x1))} height={height} fill="transparent" stroke="transparent" data-drawing-id={item.id}/></g>;
+          }
           if (item.tool === "label") return <g key={item.id} data-drawing-id={item.id} style={{ pointerEvents: "all", cursor: item.locked ? "not-allowed" : "move" }}><rect x={c.x1} y={c.y1 - 24} width={Math.max(70, (item.text || "Label").length * 8 + 18)} height={28} rx={5} fill="#202833" stroke={selected ? "#60a5fa" : "#f4bd45"} data-drawing-id={item.id}/><text x={c.x1 + 9} y={c.y1 - 5} fill="#fff" fontSize="13" data-drawing-id={item.id}>{item.text}</text></g>;
           if (item.tool === "fib" || item.tool === "fib-extension") {
             const ratios = item.tool === "fib" ? [0, .236, .382, .5, .618, .786, 1] : [0, .618, 1, 1.618, 2.618];
@@ -488,7 +547,7 @@ export default function EdgeLightweightChart({
           return <g key={item.id}><line x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2} {...common} /><line x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2} stroke="transparent" strokeWidth="14" data-drawing-id={item.id} style={{ pointerEvents: "stroke", cursor: item.locked ? "not-allowed" : "move" }} /></g>;
         })}
       </svg>
-      {selectedDrawing !== null && <div className="edge-drawing-selection-tools"><button type="button" onClick={() => recordDrawingChange(drawingsRef.current.map(d => d.id === selectedDrawing ? { ...d, locked: !d.locked } : d))}>{drawings.find(d => d.id === selectedDrawing)?.locked ? "Unlock" : "Lock"}</button><button type="button" onClick={() => { recordDrawingChange(drawingsRef.current.filter(d => d.id !== selectedDrawing)); setSelectedDrawing(null); }}>Delete</button><button type="button" onClick={() => setSelectedDrawing(null)}>Done</button></div>}
+      {drawingsVisible && selectedDrawing !== null && <div className="edge-drawing-selection-tools"><button type="button" onClick={() => recordDrawingChange(drawingsRef.current.map(d => d.id === selectedDrawing ? { ...d, locked: !d.locked } : d))}>{drawings.find(d => d.id === selectedDrawing)?.locked ? "Unlock" : "Lock"}</button><button type="button" onClick={() => { recordDrawingChange(drawingsRef.current.filter(d => d.id !== selectedDrawing)); setSelectedDrawing(null); }}>Delete</button><button type="button" onClick={() => setSelectedDrawing(null)}>Done</button></div>}
     </div>
   </div>;
 }
