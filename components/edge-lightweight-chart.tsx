@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 type Candle = { time: string; open: number; high: number; low: number; close: number; volume?: number | null };
 type Indicator = { id: string; name: string; kind: "ema" | "sma"; period: number; color: string };
@@ -37,10 +37,10 @@ function movingAverage(rows: Candle[], period: number, exponential: boolean) {
 }
 
 export default function EdgeLightweightChart({
-  symbol, interval, candles, indicators, livePrice, quoteMode, onChartType,
+  symbol, interval, candles, indicators, livePrice, quoteMode, onChartType, toolbarControls, toolbarActions,
 }: {
   symbol: string; interval: string; candles: Candle[]; indicators: Indicator[];
-  livePrice: number | null; quoteMode: string; onChartType?: (type: string) => void;
+  livePrice: number | null; quoteMode: string; onChartType?: (type: string) => void; toolbarControls?: ReactNode; toolbarActions?: ReactNode;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
@@ -162,7 +162,9 @@ export default function EdgeLightweightChart({
         <button type="button" className={chartType === "line" ? "active" : ""} onClick={() => { setChartType("line"); onChartType?.("line"); }} title="Line">⌁</button>
       </div>
       <div className="edge-tv-indicator-label">▥ Indicators</div>
+      {toolbarControls}
       <div className="edge-tv-toolbar-spacer" />
+      {toolbarActions}
       <span className="edge-tv-feed-badge">{quoteMode === "live" ? "● LIVE" : "BROKER DATA"}</span>
     </div>
     <div className="edge-tv-ohlc"><span className="edge-tv-market-dot"/> <strong>{symbol}</strong><span>· {interval} · {quoteMode === "live" ? "LIVE BROKER" : "BROKER"}</span>{ohlc && <b>O {ohlc.open.toFixed(digits)} H {ohlc.high.toFixed(digits)} L {ohlc.low.toFixed(digits)} C {ohlc.close.toFixed(digits)}</b>}</div>

@@ -2404,3 +2404,29 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
 .edge-tv-chart-host{width:100%;height:calc(100% - 84px);min-height:300px;flex:1 1 auto;position:relative;touch-action:pan-y}
 .edge-tv-load-error{padding:8px 12px;color:#f0b44a;font-size:12px;background:#17191f}
 @media(max-width:700px){.edge-tv-chart-toolbar{gap:5px;padding:0 6px}.edge-tv-indicator-label{font-size:12px;padding:5px}.edge-tv-ohlc{font-size:11px}.edge-chart-canvas-wrap{height:520px!important;min-height:520px!important}}
+
+
+/* Compact TradingView-style single-row controls inside the chart toolbar. */
+.edge-chart-studio-toolbar-compact{display:none!important}
+.edge-tv-chart-toolbar{height:auto!important;min-height:52px!important;gap:8px!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:thin}
+.edge-tv-inline-group{display:flex;align-items:center;gap:5px;flex:0 0 auto;padding:0 7px;border-left:1px solid #30343d}
+.edge-tv-inline-label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#8792a3;margin-right:3px}
+.edge-tv-inline-group button,.edge-tv-inline-group select,.edge-tv-pine-button{height:32px;min-width:32px;padding:0 9px;border:1px solid #343b47;border-radius:6px;background:#171b22;color:#dce2eb;font-size:11px;white-space:nowrap;cursor:pointer}
+.edge-tv-inline-group button:hover,.edge-tv-inline-group button.active{border-color:#dba92e;background:#2a2416;color:#ffd05a}
+.edge-tv-inline-group button:disabled{opacity:.45;cursor:not-allowed}
+.edge-tv-inline-group select{padding:0 6px}
+.edge-tv-pine-button{height:34px;padding:0 12px;font-size:12px;border-color:#424a57;background:#202630}
+.edge-tv-pine-button:hover{border-color:#dba92e;color:#ffd05a}
+.edge-tv-toolbar-spacer{flex:1 1 12px;min-width:8px}
+.edge-tv-feed-badge{flex:0 0 auto}
+@media(max-width:1100px){
+ .edge-tv-chart-toolbar{flex-wrap:wrap;height:auto!important;min-height:52px!important;padding:6px!important;white-space:normal!important}
+ .edge-tv-inline-group{padding:2px 5px}
+ .edge-tv-toolbar-spacer{display:none}
+}
+@media(max-width:700px){
+ .edge-tv-chart-toolbar{align-items:center;gap:4px!important}
+ .edge-tv-inline-label{display:none}
+ .edge-tv-inline-group button,.edge-tv-inline-group select{height:30px;padding:0 7px;font-size:10px}
+ .edge-tv-pine-button{height:30px;font-size:10px;padding:0 8px}
+}

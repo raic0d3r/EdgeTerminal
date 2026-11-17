@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { fetchMarketData } from "@/lib/market-selection";
 import EdgeLightweightChart from "@/components/edge-lightweight-chart";
 
@@ -204,30 +204,8 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
   }
 
   return <div className="edge-chart-studio">
-    <div className="edge-chart-studio-toolbar">
+    <div className="edge-chart-studio-toolbar edge-chart-studio-toolbar-compact">
       <div><strong>EDGE CHART</strong><span className="edge-chart-beta">BETA</span><small>{symbol} · {interval} · {provider.toUpperCase()}</small></div>
-      <div className="edge-chart-actions">
-        <button type="button" onClick={() => setStudioOpen(v => !v)}>{studioOpen ? "Close Pine Studio" : "Pine Script Studio"}</button>
-        <button type="button" onClick={() => void load()} disabled={busy}>{busy ? "Refreshing…" : "Refresh"}</button>
-      </div>
-    </div>
-    <div className="edge-chart-indicators">
-      <span>INDICATORS</span>
-      {PRESETS.map(item => <button type="button" key={item.id} className={active.some(a => a.id === item.id) ? "active" : ""} onClick={() => setActive(current => current.some(a => a.id === item.id) ? current.filter(a => a.id !== item.id) : [...current, item])}>{item.name}</button>)}
-      {active.filter(a => a.source === "pine").map(a => <button type="button" key={a.id} className="active pine-indicator" onClick={() => setActive(current => current.filter(v => v.id !== a.id))}>{a.name} ×</button>)}
-    </div>
-    <div className="edge-chart-nav">
-      <button type="button" onClick={() => setVisibleCount(v => Math.max(25, Math.round(v / 1.25)))}>＋ Zoom in</button>
-      <button type="button" onClick={() => setVisibleCount(v => Math.min(candles.length || 500, Math.round(v * 1.25)))}>－ Zoom out</button>
-      <button type="button" onClick={() => { setViewEnd(null); setReplayIndex(null); setVisibleCount(140); }}>Reset view</button>
-      <button type="button" className={replayIndex !== null ? "active" : ""} onClick={beginReplay} disabled={candles.length < 3}>▶ Bar Replay</button>
-      {replayIndex !== null && <>
-        <button type="button" onClick={() => setReplayPlaying(v => !v)}>{replayPlaying ? "Ⅱ Pause" : "▶ Play"}</button>
-        <button type="button" onClick={() => setReplayIndex(v => Math.max(1, (v ?? 1) - 1))}>◀ Step</button>
-        <button type="button" onClick={() => setReplayIndex(v => Math.min(candles.length - 1, (v ?? 1) + 1))}>Step ▶</button>
-        <select aria-label="Replay speed" value={replaySpeed} onChange={e => setReplaySpeed(Number(e.target.value))}><option value="0.5">0.5×</option><option value="1">1×</option><option value="2">2×</option><option value="5">5×</option><option value="10">10×</option></select>
-        <button type="button" onClick={stopReplay}>Exit Replay</button>
-      </>}
     </div>
     {replayIndex !== null && <div className="edge-replay-timeline"><span>REPLAY · {candles[replayIndex]?.time ? new Date(candles[replayIndex].time).toLocaleString() : ""}</span><input aria-label="Replay position" type="range" min="1" max={Math.max(1, candles.length - 1)} value={replayIndex} onChange={e => { setReplayPlaying(false); setReplayIndex(Number(e.target.value)); }} /></div>}
     <div className="edge-chart-status"><span className={quoteMode === "live" ? "edge-live-dot" : "edge-stale-dot"}/> {status} · {quoteMode === "live" ? "Live broker quote · 5s refresh" : "Broker last close · waiting for live quote"}{lastUpdate ? ` · ${new Date(lastUpdate).toLocaleTimeString()}` : ""}</div>
@@ -247,6 +225,29 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
           indicators={active}
           livePrice={replayIndex === null && viewEnd === null ? livePrice : null}
           quoteMode={quoteMode}
+          toolbarControls={<>
+            <div className="edge-tv-inline-group edge-tv-indicator-controls" aria-label="Indicators">
+              <span className="edge-tv-inline-label">Indicators</span>
+              {PRESETS.map(item => <button type="button" key={item.id} className={active.some(a => a.id === item.id) ? "active" : ""} onClick={() => setActive(current => current.some(a => a.id === item.id) ? current.filter(a => a.id !== item.id) : [...current, item])}>{item.name}</button>)}
+              {active.filter(a => a.source === "pine").map(a => <button type="button" key={a.id} className="active" onClick={() => setActive(current => current.filter(v => v.id !== a.id))}>{a.name} ×</button>)}
+            </div>
+            <div className="edge-tv-inline-group edge-tv-navigation-controls" aria-label="Chart navigation">
+              <button type="button" onClick={() => setVisibleCount(v => Math.max(25, Math.round(v / 1.25)))}>＋</button>
+              <button type="button" onClick={() => setVisibleCount(v => Math.min(candles.length || 500, Math.round(v * 1.25)))}>－</button>
+              <button type="button" onClick={() => { setViewEnd(null); setReplayIndex(null); setVisibleCount(140); }}>Reset</button>
+              <button type="button" className={replayIndex !== null ? "active" : ""} onClick={beginReplay} disabled={candles.length < 3}>▶ Replay</button>
+              {replayIndex !== null && <>
+                <button type="button" onClick={() => setReplayPlaying(v => !v)}>{replayPlaying ? "Ⅱ" : "▶"}</button>
+                <button type="button" onClick={() => setReplayIndex(v => Math.max(1, (v ?? 1) - 1))}>◀</button>
+                <button type="button" onClick={() => setReplayIndex(v => Math.min(candles.length - 1, (v ?? 1) + 1))}>▶</button>
+                <select aria-label="Replay speed" value={replaySpeed} onChange={e => setReplaySpeed(Number(e.target.value))}><option value="0.5">0.5×</option><option value="1">1×</option><option value="2">2×</option><option value="5">5×</option><option value="10">10×</option></select>
+                <button type="button" onClick={stopReplay}>Exit</button>
+              </>}
+            </div>
+          </>}
+          toolbarActions={<>
+            <button type="button" className="edge-tv-pine-button" onClick={() => setStudioOpen(v => !v)}>{studioOpen ? "Close Pine Studio" : "Pine Script Studio"}</button>
+          </>}
         />
       </div>
     </div> : <div className="edge-chart-empty">No chart rendered because verified broker candle data is unavailable. Check the selected broker connection and instrument.</div>}
