@@ -2848,3 +2848,8 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
   .edge-tv-inline-group button { min-width: 24px !important; padding-inline: 4px !important; font-size: 9px !important; }
   .edge-tv-feed-badge { display: none !important; }
 }
+.edge-drawing-selection-tools{position:absolute;z-index:12;top:8px;left:50%;transform:translateX(-50%);display:flex;gap:6px;padding:6px;background:#171b22;border:1px solid #394454;border-radius:9px;box-shadow:0 8px 24px #0008}
+.edge-drawing-selection-tools button{border:1px solid #465365;border-radius:6px;background:#252c37;color:#e7edf5;padding:6px 10px;font-size:12px;cursor:pointer}
+.edge-drawing-selection-tools button:hover{border-color:#f4bd45}
+.edge-tv-drawing-overlay:not(.drawing-active){pointer-events:none}
+.edge-tv-drawing-overlay:not(.drawing-active) [data-drawing-id]{pointer-events:all}

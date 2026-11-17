@@ -111,7 +111,7 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
   const [replayPlaying, setReplayPlaying] = useState(false);
   const [replaySpeed, setReplaySpeed] = useState(1);
   const [dragging, setDragging] = useState(false);
-  const [drawingTool, setDrawingTool] = useState<"cursor" | "trend" | "horizontal" | "vertical">("cursor");
+  const [drawingTool, setDrawingTool] = useState<"cursor" | "trend" | "horizontal" | "vertical" | "label">("cursor");
   const [clearDrawingsVersion, setClearDrawingsVersion] = useState(0);
   const dragRef = useRef<{ x: number; end: number | null } | null>(null);
 
@@ -248,6 +248,7 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
         <button type="button" title="Trend line" aria-label="Trend line" className={drawingTool === "trend" ? "selected" : ""} onClick={() => setDrawingTool("trend")}>／</button>
         <button type="button" title="Horizontal line" aria-label="Horizontal line" className={drawingTool === "horizontal" ? "selected" : ""} onClick={() => setDrawingTool("horizontal")}>━</button>
         <button type="button" title="Vertical line" aria-label="Vertical line" className={drawingTool === "vertical" ? "selected" : ""} onClick={() => setDrawingTool("vertical")}>┃</button>
+        <button type="button" title="Add text label" aria-label="Add text label" className={drawingTool === "label" ? "selected" : ""} onClick={() => setDrawingTool("label")}>T</button>
         <button type="button" title="Clear drawings" aria-label="Clear drawings" onClick={() => setClearDrawingsVersion(v => v + 1)}>⌫</button>
       </aside>
       <div className="edge-chart-plot-stack">

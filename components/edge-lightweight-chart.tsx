@@ -40,11 +40,13 @@ export default function EdgeLightweightChart({
   symbol, interval, candles, indicators, livePrice, quoteMode, drawingTool = "cursor", clearDrawingsVersion = 0, onChartType, onIntervalChange, toolbarControls, toolbarActions,
 }: {
   symbol: string; interval: string; candles: Candle[]; indicators: Indicator[];
-  livePrice: number | null; quoteMode: string; drawingTool?: "cursor" | "trend" | "horizontal" | "vertical"; clearDrawingsVersion?: number; onChartType?: (type: string) => void; onIntervalChange?: (value: string) => void; toolbarControls?: ReactNode; toolbarActions?: ReactNode;
+  livePrice: number | null; quoteMode: string; drawingTool?: "cursor" | "trend" | "horizontal" | "vertical" | "label"; clearDrawingsVersion?: number; onChartType?: (type: string) => void; onIntervalChange?: (value: string) => void; toolbarControls?: ReactNode; toolbarActions?: ReactNode;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const [drawings, setDrawings] = useState<Array<{ id: number; tool: "trend" | "horizontal" | "vertical"; t1: any; p1: number; t2: any; p2: number }>>([]);
-  const [draft, setDraft] = useState<{ tool: "trend" | "horizontal" | "vertical"; t1: any; p1: number; t2: any; p2: number } | null>(null);
+  const [drawings, setDrawings] = useState<Array<{ id: number; tool: "trend" | "horizontal" | "vertical" | "label"; t1: any; p1: number; t2: any; p2: number; text?: string; locked?: boolean }>>([]);
+  const [selectedDrawing, setSelectedDrawing] = useState<number | null>(null);
+  const dragDrawingRef = useRef<{ id: number; startX: number; startY: number; original: any } | null>(null);
+  const [draft, setDraft] = useState<{ tool: "trend" | "horizontal" | "vertical"; t1: any; p1: number; t2: any; p2: number; locked?: boolean; text?: string } | null>(null);
   const [drawVersion, setDrawVersion] = useState(0);
   const chartRef = useRef<any>(null);
   const candleSeriesRef = useRef<any>(null);
@@ -74,26 +76,60 @@ export default function EdgeLightweightChart({
   }
 
   function startDrawing(event: React.PointerEvent<SVGSVGElement>) {
-    if (!drawingMode) return;
     const point = drawingPoint(event);
     if (!point) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
+    if (drawingTool === "cursor") {
+      const target = event.target as SVGElement;
+      const id = Number(target.getAttribute("data-drawing-id"));
+      if (!Number.isFinite(id)) { setSelectedDrawing(null); return; }
+      const item = drawings.find(d => d.id === id);
+      if (!item) return;
+      setSelectedDrawing(id);
+      if (item.locked) return;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      dragDrawingRef.current = { id, startX: event.clientX, startY: event.clientY, original: { ...item, point } };
+      return;
+    }
+    if (drawingTool === "label") {
+      const text = window.prompt("Enter chart label:", "Label");
+      if (text?.trim()) setDrawings(current => [...current, { id: Date.now() + current.length, tool: "label", t1: point.time, p1: point.price, t2: point.time, p2: point.price, text: text.trim() }]);
+      return;
+    }
     const tool = drawingTool as "trend" | "horizontal" | "vertical";
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSelectedDrawing(null);
     setDraft({ tool, t1: point.time, p1: point.price, t2: point.time, p2: point.price });
   }
   function moveDrawing(event: React.PointerEvent<SVGSVGElement>) {
+    const drag = dragDrawingRef.current;
+    if (drag) {
+      const point = drawingPoint(event);
+      if (!point) return;
+      const original = drag.original;
+      const deltaPrice = point.price - original.point.price;
+      const timeScale = chartRef.current?.timeScale();
+      const startX = timeScale?.timeToCoordinate(original.t1);
+      const currentX = timeScale?.timeToCoordinate(point.time);
+      const shift = startX != null && currentX != null ? currentX - startX : 0;
+      const shiftedTime = (value: any) => {
+        const x = timeScale?.timeToCoordinate(value);
+        return x == null ? value : (timeScale.coordinateToTime(x + shift) ?? value);
+      };
+      setDrawings(current => current.map(d => d.id !== drag.id ? d : d.tool === "horizontal" ? { ...d, p1: d.p1 + deltaPrice, p2: d.p2 + deltaPrice } : d.tool === "vertical" ? { ...d, t1: shiftedTime(d.t1), t2: shiftedTime(d.t2) } : { ...d, t1: shiftedTime(d.t1), t2: shiftedTime(d.t2), p1: d.p1 + deltaPrice, p2: d.p2 + deltaPrice }));
+      dragDrawingRef.current = { ...drag, original: { ...original, point } };
+      return;
+    }
     if (!draft) return;
     const point = drawingPoint(event);
     if (point) setDraft(current => current ? { ...current, t2: point.time, p2: point.price } : null);
   }
-  function finishDrawing(event: React.PointerEvent<SVGSVGElement>) {
+  function finishDrawing() {
+    if (dragDrawingRef.current) { dragDrawingRef.current = null; return; }
     if (!draft) return;
-    const point = drawingPoint(event);
-    const finalDrawing = point ? { ...draft, t2: point.time, p2: point.price } : draft;
-    setDrawings(current => [...current, { ...finalDrawing, id: Date.now() + current.length }]);
+    setDrawings(current => [...current, { ...draft, id: Date.now() + current.length }]);
     setDraft(null);
   }
-  function drawingCoordinates(item: { tool: "trend" | "horizontal" | "vertical"; t1: any; p1: number; t2: any; p2: number }) {
+  function drawingCoordinates(item: { tool: "trend" | "horizontal" | "vertical" | "label"; t1: any; p1: number; t2: any; p2: number }) {
     const chart = chartRef.current;
     const series = candleSeriesRef.current;
     if (!chart || !series) return null;
@@ -263,17 +299,21 @@ export default function EdgeLightweightChart({
     {loadError && <div className="edge-tv-load-error">{loadError}</div>}
     <div className="edge-tv-chart-stage">
       <div ref={hostRef} className="edge-tv-chart-host" aria-label={`${symbol} ${interval} broker candlestick chart`} />
-      <svg data-draw-version={drawVersion} className={`edge-tv-drawing-overlay ${drawingMode ? "drawing-active" : ""}`} style={{ width: chartRef.current?.timeScale().width() ?? 0, height: hostRef.current ? hostRef.current.clientHeight - (chartRef.current?.timeScale().height() ?? 0) : 0 }} onPointerDown={startDrawing} onPointerMove={moveDrawing} onPointerUp={finishDrawing} onPointerCancel={() => setDraft(null)} aria-label="Chart drawing surface">
+      <svg data-draw-version={drawVersion} className={`edge-tv-drawing-overlay ${drawingMode ? "drawing-active" : ""}`} style={{ width: chartRef.current?.timeScale().width() ?? 0, height: hostRef.current ? hostRef.current.clientHeight - (chartRef.current?.timeScale().height() ?? 0) : 0 }} onPointerDown={startDrawing} onPointerMove={moveDrawing} onPointerUp={finishDrawing} onPointerCancel={() => { setDraft(null); dragDrawingRef.current = null; }} aria-label="Chart drawing surface">
         {[...drawings, ...(draft ? [{ ...draft, id: -1 }] : [])].map(item => {
           const c = drawingCoordinates(item);
           if (!c) return null;
           const width = chartRef.current?.timeScale().width() ?? 0;
           const height = hostRef.current ? hostRef.current.clientHeight - (chartRef.current?.timeScale().height() ?? 0) : 0;
-          if (item.tool === "horizontal") return null;
-          if (item.tool === "vertical") return <line key={item.id} x1={c.x1} x2={c.x1} y1={0} y2={height} stroke="#f4bd45" strokeWidth="1.5" strokeDasharray="6 4" />;
-          return <line key={item.id} x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2} stroke="#f4bd45" strokeWidth="2" />;
+          const selected = selectedDrawing === item.id;
+          const common = { "data-drawing-id": String(item.id), stroke: selected ? "#60a5fa" : "#f4bd45", strokeWidth: selected ? 3 : 2, style: { pointerEvents: "stroke" as const, cursor: item.locked ? "not-allowed" : "move" } };
+          if (item.tool === "label") return <g key={item.id} data-drawing-id={item.id} style={{ pointerEvents: "all", cursor: item.locked ? "not-allowed" : "move" }}><rect x={c.x1} y={c.y1 - 24} width={Math.max(70, (item.text || "Label").length * 8 + 18)} height={28} rx={5} fill="#202833" stroke={selected ? "#60a5fa" : "#f4bd45"} data-drawing-id={item.id}/><text x={c.x1 + 9} y={c.y1 - 5} fill="#fff" fontSize="13" data-drawing-id={item.id}>{item.text}</text></g>;
+          if (item.tool === "horizontal") return <line key={item.id} x1={0} x2={width} y1={c.y1} y2={c.y1} {...common} strokeDasharray="7 4" />;
+          if (item.tool === "vertical") return <line key={item.id} x1={c.x1} x2={c.x1} y1={0} y2={height} {...common} strokeDasharray="6 4" />;
+          return <g key={item.id}><line x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2} {...common} /><line x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2} stroke="transparent" strokeWidth="14" data-drawing-id={item.id} style={{ pointerEvents: "stroke", cursor: item.locked ? "not-allowed" : "move" }} /></g>;
         })}
       </svg>
+      {selectedDrawing !== null && <div className="edge-drawing-selection-tools"><button type="button" onClick={() => setDrawings(current => current.map(d => d.id === selectedDrawing ? { ...d, locked: !d.locked } : d))}>{drawings.find(d => d.id === selectedDrawing)?.locked ? "Unlock" : "Lock"}</button><button type="button" onClick={() => { setDrawings(current => current.filter(d => d.id !== selectedDrawing)); setSelectedDrawing(null); }}>Delete</button><button type="button" onClick={() => setSelectedDrawing(null)}>Done</button></div>}
     </div>
   </div>;
 }
