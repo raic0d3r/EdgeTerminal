@@ -161,7 +161,6 @@ export default function EdgeLightweightChart({
         <button type="button" className={chartType === "candles" ? "active" : ""} onClick={() => { setChartType("candles"); onChartType?.("candles"); }} title="Candles">▥</button>
         <button type="button" className={chartType === "line" ? "active" : ""} onClick={() => { setChartType("line"); onChartType?.("line"); }} title="Line">⌁</button>
       </div>
-      <div className="edge-tv-indicator-label">▥ Indicators</div>
       {toolbarControls}
       <div className="edge-tv-toolbar-spacer" />
       {toolbarActions}

@@ -2445,3 +2445,18 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
 .edge-tv-chart-shell{min-height:620px!important}
 .edge-tv-chart-host{min-height:500px!important;height:auto!important;flex:1 1 auto!important}
 @media(max-width:700px){.edge-chart-canvas-wrap{height:clamp(500px,72vh,760px)!important;min-height:500px!important}.edge-tv-chart-shell{min-height:500px!important}.edge-tv-chart-toolbar{overflow:visible!important;flex-wrap:wrap!important}.edge-tv-indicator-menu{position:fixed;left:12px;top:auto;max-width:calc(100vw - 24px)}}
+
+
+/* Final toolbar correction: indicators are available only from the dropdown trigger. */
+.edge-tv-indicator-label{display:none!important}
+.edge-tv-indicator-menu-wrap{position:relative!important;z-index:120!important}
+.edge-tv-indicator-menu{position:absolute!important;top:calc(100% + 8px)!important;left:0!important;z-index:999!important;min-width:220px!important;max-height:min(65vh,420px)!important;overflow-y:auto!important}
+.edge-tv-chart-toolbar{position:relative!important;z-index:20!important;overflow:visible!important;min-height:58px!important;flex-wrap:nowrap!important}
+.edge-tv-chart-shell{height:100%!important;min-height:0!important}
+.edge-chart-canvas-wrap{height:clamp(560px,78vh,920px)!important;min-height:560px!important;flex:0 0 auto!important}
+.edge-chart-plot-stack{height:100%!important;min-height:0!important}
+.edge-tv-chart-host{height:calc(100% - 106px)!important;min-height:420px!important;flex:1 1 auto!important}
+@media(max-width:900px){
+ .edge-tv-chart-toolbar{overflow-x:auto!important;overflow-y:visible!important}
+ .edge-chart-canvas-wrap{height:clamp(520px,72vh,780px)!important;min-height:520px!important}
+}
