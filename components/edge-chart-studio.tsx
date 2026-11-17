@@ -67,7 +67,7 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
   const [status, setStatus] = useState("Loading broker candles…");
   const [busy, setBusy] = useState(false);
   const [active, setActive] = useState<Indicator[]>(PRESETS.slice(0, 2));
-  const [studioOpen, setStudioOpen] = useState(false);
+  const [studioOpen, setStudioOpen] = useState(false);\n  const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const [script, setScript] = useState('//@version=5\nindicator("My EMA", overlay=true)\nplot(ta.ema(close, 20), title="EMA 20", color=color.orange)');
   const [scriptError, setScriptError] = useState("");
   const [scriptNote, setScriptNote] = useState("");
@@ -226,10 +226,13 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
           livePrice={replayIndex === null && viewEnd === null ? livePrice : null}
           quoteMode={quoteMode}
           toolbarControls={<>
-            <div className="edge-tv-inline-group edge-tv-indicator-controls" aria-label="Indicators">
-              <span className="edge-tv-inline-label">Indicators</span>
-              {PRESETS.map(item => <button type="button" key={item.id} className={active.some(a => a.id === item.id) ? "active" : ""} onClick={() => setActive(current => current.some(a => a.id === item.id) ? current.filter(a => a.id !== item.id) : [...current, item])}>{item.name}</button>)}
-              {active.filter(a => a.source === "pine").map(a => <button type="button" key={a.id} className="active" onClick={() => setActive(current => current.filter(v => v.id !== a.id))}>{a.name} ×</button>)}
+            <div className="edge-tv-indicator-menu-wrap">
+              <button type="button" className={`edge-tv-indicator-menu-trigger ${indicatorsOpen ? "active" : ""}`} aria-haspopup="menu" aria-expanded={indicatorsOpen} onClick={() => setIndicatorsOpen(v => !v)}>▥ Indicators <span className="edge-tv-caret">⌄</span></button>
+              {indicatorsOpen && <div className="edge-tv-indicator-menu" role="menu" aria-label="Chart indicators">
+                <div className="edge-tv-indicator-menu-title">OVERLAYS</div>
+                {PRESETS.map(item => <button type="button" role="menuitemcheckbox" aria-checked={active.some(a => a.id === item.id)} key={item.id} className={active.some(a => a.id === item.id) ? "selected" : ""} onClick={() => setActive(current => current.some(a => a.id === item.id) ? current.filter(a => a.id !== item.id) : [...current, item])}><span>{item.name}</span><span className="edge-tv-indicator-check">{active.some(a => a.id === item.id) ? "✓" : ""}</span></button>)}
+                {active.filter(a => a.source === "pine").map(a => <button type="button" role="menuitem" key={a.id} className="selected" onClick={() => setActive(current => current.filter(v => v.id !== a.id))}><span>{a.name}</span><span>×</span></button>)}
+              </div>}
             </div>
             <div className="edge-tv-inline-group edge-tv-navigation-controls" aria-label="Chart navigation">
               <button type="button" onClick={() => setVisibleCount(v => Math.max(25, Math.round(v / 1.25)))}>＋</button>

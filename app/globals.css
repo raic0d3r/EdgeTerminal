@@ -2430,3 +2430,18 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
  .edge-tv-inline-group button,.edge-tv-inline-group select{height:30px;padding:0 7px;font-size:10px}
  .edge-tv-pine-button{height:30px;font-size:10px;padding:0 8px}
 }
+
+
+/* Indicator dropdown and taller chart viewport */
+.edge-tv-indicator-menu-wrap{position:relative;display:flex;align-items:center;flex:0 0 auto}
+.edge-tv-indicator-menu-trigger{height:36px;display:inline-flex;align-items:center;gap:10px;padding:0 13px;border:1px solid #343b47;border-radius:7px;background:#171a20;color:#dce1e9;font-size:13px;font-weight:600;cursor:pointer}
+.edge-tv-indicator-menu-trigger:hover,.edge-tv-indicator-menu-trigger.active{border-color:#d99d19;background:#24201a;color:#ffc247}
+.edge-tv-indicator-menu{position:absolute;z-index:80;top:calc(100% + 8px);left:0;width:230px;padding:8px;background:#171a20;border:1px solid #3a414d;border-radius:9px;box-shadow:0 12px 32px rgba(0,0,0,.48);display:flex;flex-direction:column;gap:3px}
+.edge-tv-indicator-menu-title{padding:7px 9px 6px;color:#8994a5;font-size:10px;font-weight:700;letter-spacing:.1em}
+.edge-tv-indicator-menu button{height:38px;display:flex;align-items:center;justify-content:space-between;padding:0 10px;border:0;border-radius:6px;background:transparent;color:#dce1e9;text-align:left;cursor:pointer;font-size:13px}
+.edge-tv-indicator-menu button:hover,.edge-tv-indicator-menu button.selected{background:#292d35;color:#ffc247}
+.edge-tv-indicator-check{font-weight:800;color:#ffc247}
+.edge-chart-canvas-wrap{height:clamp(620px,78vh,960px)!important;min-height:620px!important}
+.edge-tv-chart-shell{min-height:620px!important}
+.edge-tv-chart-host{min-height:500px!important;height:auto!important;flex:1 1 auto!important}
+@media(max-width:700px){.edge-chart-canvas-wrap{height:clamp(500px,72vh,760px)!important;min-height:500px!important}.edge-tv-chart-shell{min-height:500px!important}.edge-tv-chart-toolbar{overflow:visible!important;flex-wrap:wrap!important}.edge-tv-indicator-menu{position:fixed;left:12px;top:auto;max-width:calc(100vw - 24px)}}
