@@ -8,7 +8,39 @@ type Candle = { time: string; open: number; high: number; low: number; close: nu
 type Indicator = { id: string; name: string; kind: "ema" | "sma"; period: number; color: string; source: "builtin" | "pine" };
 type PinePlot = { name: string; kind: "ema" | "sma" | "close"; period: number; color: string };
 
-const API_INTERVAL: Record<string, string> = { "1m": "1min", "5m": "5min", "10m": "10min", "15m": "15min", "30m": "30min", "1h": "1h", "4h": "4h", "1d": "1day", "1w": "1week", "1mo": "1month" };
+const API_INTERVAL: Record<string, string> = {
+  "1m": "1min", "2m": "1min", "3m": "1min", "5m": "5min", "10m": "10min", "15m": "15min", "30m": "30min", "45m": "15min",
+  "1h": "1h", "2h": "1h", "3h": "1h", "4h": "4h", "1d": "1day", "1w": "1day", "1mo": "1day", "3mo": "1day", "6mo": "1day", "12mo": "1day",
+};
+
+function aggregateCandles(rows: Candle[], interval: string): Candle[] {
+  const minuteMatch = /^(\d+)m$/.exec(interval);
+  const hourMatch = /^(\d+)h$/.exec(interval);
+  const monthMatch = /^(\d+)mo$/.exec(interval);
+  if (!minuteMatch && !hourMatch && !["1w", "1d"].includes(interval) && !monthMatch) return rows;
+  const bucketStart = (time: string) => {
+    const date = new Date(time);
+    const epoch = date.getTime();
+    if (!Number.isFinite(epoch)) return 0;
+    if (minuteMatch) { const size = Number(minuteMatch[1]) * 60_000; return Math.floor(epoch / size) * size; }
+    if (hourMatch) { const size = Number(hourMatch[1]) * 3_600_000; return Math.floor(epoch / size) * size; }
+    if (interval === "1d") return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+    if (interval === "1w") { const day = (date.getUTCDay() + 6) % 7; return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - day); }
+    const months = Number(monthMatch?.[1] || 1);
+    const monthIndex = date.getUTCFullYear() * 12 + date.getUTCMonth();
+    const startMonth = Math.floor(monthIndex / months) * months;
+    return Date.UTC(Math.floor(startMonth / 12), startMonth % 12, 1);
+  };
+  const buckets = new Map<number, Candle>();
+  for (const row of rows) {
+    const key = bucketStart(row.time);
+    if (!key) continue;
+    const current = buckets.get(key);
+    if (!current) buckets.set(key, { ...row, time: new Date(key).toISOString() });
+    else { current.high = Math.max(current.high, row.high); current.low = Math.min(current.low, row.low); current.close = row.close; current.volume = (Number(current.volume) || 0) + (Number(row.volume) || 0); }
+  }
+  return [...buckets.entries()].sort((a,b)=>a[0]-b[0]).map(([, candle])=>candle);
+}
 
 const PRESETS: Indicator[] = [
   { id: "ema-20", name: "EMA 20", kind: "ema", period: 20, color: "#f5b942", source: "builtin" },
@@ -59,7 +91,7 @@ function parsePine(source: string): { plots: PinePlot[]; error: string | null } 
   return { plots, error: null };
 }
 
-export default function EdgeChartStudio({ symbol, interval, provider }: { symbol: string; interval: string; provider: "ctrader" | "exness" }) {
+export default function EdgeChartStudio({ symbol, interval, provider, onIntervalChange }: { symbol: string; interval: string; provider: "ctrader" | "exness"; onIntervalChange?: (value: string) => void }) {
   const [candles, setCandles] = useState<Candle[]>([]);
   const [livePrice, setLivePrice] = useState<number | null>(null);
   const [quoteMode, setQuoteMode] = useState("waiting");
@@ -90,7 +122,7 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
       const response = await fetchMarketData(`/api/market?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(API_INTERVAL[interval] || interval)}&provider=${provider}&historyBars=500`);
       const body = await response.json();
       if (!response.ok || !Array.isArray(body?.data?.candles)) throw new Error(body?.error || "Broker candle history is unavailable.");
-      const rows = body.data.candles.map((c: Candle) => ({
+      const rawRows = body.data.candles.map((c: Candle) => ({
         ...c, open: Number(c.open), high: Number(c.high), low: Number(c.low), close: Number(c.close),
       })).filter((c: Candle) =>
         Number.isFinite(c.open) && Number.isFinite(c.high) &&
@@ -98,6 +130,7 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
         c.high >= c.low && c.high >= Math.max(c.open, c.close) &&
         c.low <= Math.min(c.open, c.close)
       );
+      const rows = aggregateCandles(rawRows, interval);
       if (!rows.length) throw new Error("No verified candles were returned by the selected broker.");
       setCandles(rows);
       const price = Number(body?.data?.price);
@@ -221,6 +254,7 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
         <EdgeLightweightChart
           symbol={symbol}
           interval={interval}
+          onIntervalChange={onIntervalChange}
           candles={displayCandles}
           indicators={active}
           livePrice={replayIndex === null && viewEnd === null ? livePrice : null}
@@ -257,14 +291,16 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
       </div>
     </div> : <div className="edge-chart-empty">No chart rendered because verified broker candle data is unavailable. Check the selected broker connection and instrument.</div>}
     <div className="edge-chart-footer"><span>{replayIndex !== null ? `Replay close: ${candles[replayIndex]?.close ?? "—"}` : livePrice != null ? `Live price: ${livePrice.toFixed(symbol === "BTC/USD" ? 1 : 2)}` : candles.length ? `Latest close: ${candles[candles.length-1].close}` : "Waiting for verified data"}</span><span>{replayIndex !== null ? "Historical replay · future candles hidden" : "Broker OHLC + quote · No synthetic candles"}</span></div>
-    {studioOpen && <section className="edge-pine-studio">
-      <div className="edge-pine-heading"><div><strong>Pine Script Studio</strong><small>Paste Pine v5/v6 source. Supported plots are converted into native overlays.</small></div><span>LIMITED COMPATIBILITY</span></div>
-      <textarea value={script} onChange={e => { setScript(e.target.value); setScriptError(""); setScriptNote(""); }} spellCheck={false} aria-label="Pine Script source editor"/>
-      <div className="edge-pine-controls"><button type="button" onClick={applyPine}>Validate & Convert</button><button type="button" className="secondary" onClick={() => setScript('//@version=5\nindicator("EMA 20 and SMA 50", overlay=true)\nplot(ta.ema(close, 20), title="EMA 20", color=color.orange)\nplot(ta.sma(close, 50), title="SMA 50", color=color.blue)')}>Load example</button></div>
-      {scriptError && <p className="edge-pine-error">{scriptError}</p>}
-      {scriptNote && <p className="edge-pine-success">{scriptNote}</p>}
-      {savedScripts.length > 0 && <div className="edge-pine-saved"><b>Saved scripts</b>{savedScripts.map((s,i)=><button type="button" key={i} onClick={()=>setScript(s)}>Script {i+1}</button>)}</div>}
-      <p className="edge-pine-disclaimer">Not a Pine Script execution environment. This first release converts a small, explicit subset: indicator()/study() declarations and plot(close), plot(ta.ema(close, N)), plot(ta.sma(close, N)). Inputs, security(), strategies, alerts, drawings, custom functions and most Pine features are not supported. Original source is retained locally.</p>
-    </section>}
+    {studioOpen && <div className="edge-pine-modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) setStudioOpen(false); }}>
+      <section className="edge-pine-studio edge-pine-studio-modal" role="dialog" aria-modal="true" aria-label="Pine Script Studio">
+        <div className="edge-pine-heading"><div><strong>Pine Script Studio</strong><small>Paste Pine v5/v6 source. Supported plots are converted into native overlays.</small></div><span>LIMITED COMPATIBILITY</span><button type="button" className="edge-pine-close" onClick={() => setStudioOpen(false)} aria-label="Close Pine Script Studio">×</button></div>
+        <textarea value={script} onChange={e => { setScript(e.target.value); setScriptError(""); setScriptNote(""); }} spellCheck={false} aria-label="Pine Script source editor"/>
+        <div className="edge-pine-controls"><button type="button" onClick={applyPine}>Validate & Convert</button><button type="button" className="secondary" onClick={() => setScript('//@version=5\nindicator("EMA 20 and SMA 50", overlay=true)\nplot(ta.ema(close, 20), title="EMA 20", color=color.orange)\nplot(ta.sma(close, 50), title="SMA 50", color=color.blue)')}>Load example</button></div>
+        {scriptError && <p className="edge-pine-error">{scriptError}</p>}
+        {scriptNote && <p className="edge-pine-success">{scriptNote}</p>}
+        {savedScripts.length > 0 && <div className="edge-pine-saved"><b>Saved scripts</b>{savedScripts.map((s,i)=><button type="button" key={i} onClick={()=>setScript(s)}>Script {i+1}</button>)}</div>}
+        <p className="edge-pine-disclaimer">Not a Pine Script execution environment. This first release converts a small, explicit subset: indicator()/study() declarations and plot(close), plot(ta.ema(close, N)), plot(ta.sma(close, N)). Inputs, security(), strategies, alerts, drawings, custom functions and most Pine features are not supported. Original source is retained locally.</p>
+      </section>
+    </div>}
   </div>;
 }

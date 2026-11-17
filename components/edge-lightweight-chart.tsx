@@ -37,10 +37,10 @@ function movingAverage(rows: Candle[], period: number, exponential: boolean) {
 }
 
 export default function EdgeLightweightChart({
-  symbol, interval, candles, indicators, livePrice, quoteMode, drawingTool = "cursor", clearDrawingsVersion = 0, onChartType, toolbarControls, toolbarActions,
+  symbol, interval, candles, indicators, livePrice, quoteMode, drawingTool = "cursor", clearDrawingsVersion = 0, onChartType, onIntervalChange, toolbarControls, toolbarActions,
 }: {
   symbol: string; interval: string; candles: Candle[]; indicators: Indicator[];
-  livePrice: number | null; quoteMode: string; drawingTool?: "cursor" | "trend" | "horizontal" | "vertical"; clearDrawingsVersion?: number; onChartType?: (type: string) => void; toolbarControls?: ReactNode; toolbarActions?: ReactNode;
+  livePrice: number | null; quoteMode: string; drawingTool?: "cursor" | "trend" | "horizontal" | "vertical"; clearDrawingsVersion?: number; onChartType?: (type: string) => void; onIntervalChange?: (value: string) => void; toolbarControls?: ReactNode; toolbarActions?: ReactNode;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [drawings, setDrawings] = useState<Array<{ id: number; tool: "trend" | "horizontal" | "vertical"; t1: any; p1: number; t2: any; p2: number }>>([]);
@@ -52,6 +52,7 @@ export default function EdgeLightweightChart({
   const indicatorSeriesRef = useRef<Map<string, any>>(new Map());
   const [module, setModule] = useState<ChartModule | null>(null);
   const [chartType, setChartType] = useState<"candles" | "bars" | "line">("candles");
+  const [timeframeOpen, setTimeframeOpen] = useState(false);
   const [ohlc, setOhlc] = useState<Candle | null>(null);
   const [loadError, setLoadError] = useState("");
   const digits = symbol === "BTC/USD" ? 1 : 2;
@@ -208,7 +209,16 @@ export default function EdgeLightweightChart({
   return <div className="edge-tv-chart-shell">
     <div className="edge-tv-chart-toolbar">
       <div className="edge-tv-symbol"><span className="edge-tv-search">⌕</span><strong>{symbol.replace("/", "")}</strong><button type="button" title="Symbol">＋</button></div>
-      <div className="edge-tv-timeframes"><span>{interval}</span><span className="edge-tv-caret">⌄</span></div>
+      <div className="edge-tv-timeframe-wrap">
+        <button type="button" className={`edge-tv-timeframes ${timeframeOpen ? "active" : ""}`} aria-haspopup="dialog" aria-expanded={timeframeOpen} onClick={() => setTimeframeOpen(v => !v)}><span>{interval}</span><span className="edge-tv-caret">⌄</span></button>
+        {timeframeOpen && <div className="edge-tv-timeframe-menu" role="dialog" aria-label="Select chart timeframe">
+          {[
+            { title: "MINUTES", items: [["1m", "1 minute"], ["2m", "2 minutes"], ["3m", "3 minutes"], ["5m", "5 minutes"], ["10m", "10 minutes"], ["15m", "15 minutes"], ["30m", "30 minutes"], ["45m", "45 minutes"]] },
+            { title: "HOURS", items: [["1h", "1 hour"], ["2h", "2 hours"], ["3h", "3 hours"], ["4h", "4 hours"]] },
+            { title: "DAYS", items: [["1d", "1 day"], ["1w", "1 week"], ["1mo", "1 month"], ["3mo", "3 months"], ["6mo", "6 months"], ["12mo", "12 months"]] },
+          ].map(group => <div className="edge-tv-timeframe-group" key={group.title}><div className="edge-tv-timeframe-group-title">{group.title}</div>{group.items.map(([value, label]) => <button type="button" key={value} className={interval === value ? "selected" : ""} onClick={() => { onIntervalChange?.(value); setTimeframeOpen(false); }}>{label}{interval === value && <span>✓</span>}</button>)}</div>)}
+        </div>}
+      </div>
       <div className="edge-tv-chart-types" aria-label="Chart type">
         <button type="button" className={chartType === "bars" ? "active" : ""} onClick={() => { setChartType("bars"); onChartType?.("bars"); }} title="Bars">☷</button>
         <button type="button" className={chartType === "candles" ? "active" : ""} onClick={() => { setChartType("candles"); onChartType?.("candles"); }} title="Candles">▥</button>

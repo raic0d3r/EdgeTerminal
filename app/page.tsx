@@ -626,8 +626,8 @@ function Dashboard() {
                 <div className={`chart-embed ${chartDisplayMode === "both" ? "chart-embed-both" : ""}`}>
                   {chartDisplayMode === "both" ? <div className="chart-both-grid">
                     <section className="chart-both-panel"><header>TradingView</header><TradingViewChart symbol={asset==="XAU/USD"?"OANDA:XAUUSD":asset==="XAG/USD"?"OANDA:XAGUSD":"COINBASE:BTCUSD"} interval={intervalMap[chartTimeframes[index] || "15m"] || "15"} showTools={toolsVisible}/></section>
-                    <section className="chart-both-panel"><header>Edge Chart · {activeBroker.toUpperCase()}</header><EdgeChartStudio symbol={asset} interval={chartTimeframes[index] || "15m"} provider={activeBroker}/></section>
-                  </div> : chartDisplayMode === "edge" ? <EdgeChartStudio symbol={asset} interval={chartTimeframes[index] || "15m"} provider={activeBroker}/> : <TradingViewChart symbol={asset==="XAU/USD"?"OANDA:XAUUSD":asset==="XAG/USD"?"OANDA:XAGUSD":"COINBASE:BTCUSD"} interval={intervalMap[chartTimeframes[index] || "15m"] || "15"} showTools={toolsVisible}/>}
+                    <section className="chart-both-panel"><header>Edge Chart · {activeBroker.toUpperCase()}</header><EdgeChartStudio symbol={asset} interval={chartTimeframes[index] || "15m"} provider={activeBroker} onIntervalChange={setAllChartTimeframes}/></section>
+                  </div> : chartDisplayMode === "edge" ? <EdgeChartStudio symbol={asset} interval={chartTimeframes[index] || "15m"} provider={activeBroker} onIntervalChange={setAllChartTimeframes}/> : <TradingViewChart symbol={asset==="XAU/USD"?"OANDA:XAUUSD":asset==="XAG/USD"?"OANDA:XAGUSD":"COINBASE:BTCUSD"} interval={intervalMap[chartTimeframes[index] || "15m"] || "15"} showTools={toolsVisible}/>}
                 </div>
               </div>)}
             </div>

@@ -2483,3 +2483,22 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
 .chart-both-panel>.tradingview-chart-iframe,.chart-both-panel>iframe{width:100%;height:520px;min-height:520px;border:0}
 .chart-both-panel>.edge-chart-studio,.chart-both-panel>div{min-width:0;flex:1}
 @media(max-width:900px){.chart-display-options{grid-template-columns:1fr}.chart-both-grid{grid-template-columns:1fr}.chart-both-panel{min-height:480px}.chart-both-panel>.tradingview-chart-iframe,.chart-both-panel>iframe{height:440px;min-height:440px}}
+
+/* Timeframe picker and Pine Script Studio dialog */
+.edge-tv-timeframe-wrap{position:relative;display:flex;align-items:center;flex:0 0 auto;z-index:140}
+.edge-tv-timeframes{display:flex;align-items:center;gap:10px;min-height:38px;padding:0 12px;border:1px solid transparent;border-left:1px solid #30343d;border-radius:6px;background:transparent;color:#e3e6ec;font-size:14px;cursor:pointer}
+.edge-tv-timeframes:hover,.edge-tv-timeframes.active{background:#252a33;border-color:#454d59}
+.edge-tv-timeframe-menu{position:absolute;z-index:1000;top:calc(100% + 8px);left:0;width:270px;max-height:min(72vh,690px);overflow-y:auto;padding:8px 10px;background:#f7f7f8;color:#171717;border:1px solid #d5d7dc;border-radius:10px;box-shadow:0 18px 48px rgba(0,0,0,.45)}
+.edge-tv-timeframe-group{padding:4px 0 8px;border-bottom:1px solid #e0e1e4}
+.edge-tv-timeframe-group:last-child{border-bottom:0}
+.edge-tv-timeframe-group-title{padding:9px 10px;color:#777b83;font-size:12px;font-weight:700;letter-spacing:.08em}
+.edge-tv-timeframe-group button{width:100%;min-height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border:0;border-radius:7px;background:transparent;color:#171717;text-align:left;font-size:15px;cursor:pointer}
+.edge-tv-timeframe-group button:hover{background:#e9eaed}
+.edge-tv-timeframe-group button.selected{background:#222;color:#fff}
+.edge-tv-timeframe-group button span{font-size:15px}
+.edge-pine-modal-backdrop{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.68);backdrop-filter:blur(3px)}
+.edge-pine-studio-modal{width:min(900px,calc(100vw - 32px));max-height:min(88vh,900px);overflow:auto;border:1px solid #3a414d;border-radius:14px;background:#111419;box-shadow:0 24px 90px rgba(0,0,0,.65);padding:18px}
+.edge-pine-studio-modal .edge-pine-heading{display:flex;align-items:center;gap:14px;justify-content:space-between}
+.edge-pine-close{width:34px;height:34px;flex:0 0 auto;border:1px solid #424a57;border-radius:7px;background:#202630;color:#e5e9f0;font-size:23px;cursor:pointer}
+.edge-pine-studio-modal textarea{min-height:300px}
+@media(max-width:700px){.edge-tv-timeframe-menu{position:fixed;left:10px;right:10px;top:90px;width:auto;max-height:calc(100vh - 110px)}.edge-pine-modal-backdrop{padding:10px;align-items:flex-start}.edge-pine-studio-modal{width:100%;max-height:calc(100vh - 20px);padding:12px}.edge-pine-studio-modal textarea{min-height:220px}}
