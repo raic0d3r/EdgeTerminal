@@ -102,6 +102,10 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
   const [active, setActive] = useState<Indicator[]>([]);
   const [studioOpen, setStudioOpen] = useState(false);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
+  const [showFvg, setShowFvg] = useState(false);
+  const [fvgFilter, setFvgFilter] = useState<"FVG Only" | "BAG Only" | "Both">("FVG Only");
+  const [fvgMinGap, setFvgMinGap] = useState("0.5");
+  const [fvgExtend, setFvgExtend] = useState(true);
   const [script, setScript] = useState('//@version=5\nindicator("My EMA", overlay=true)\nplot(ta.ema(close, 20), title="EMA 20", color=color.orange)');
   const [scriptError, setScriptError] = useState("");
   const [scriptNote, setScriptNote] = useState("");
@@ -249,6 +253,7 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
           onIntervalChange={onIntervalChange}
           candles={displayCandles}
           indicators={active}
+          fvgSettings={{ enabled: showFvg, filter: fvgFilter, minGap: Number(fvgMinGap) || 0, extendRight: fvgExtend }}
           livePrice={replayIndex === null && viewEnd === null ? livePrice : null}
           quoteMode={quoteMode}
           drawingTool={drawingTool}
@@ -258,6 +263,8 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
               <button type="button" className={`edge-tv-indicator-menu-trigger ${indicatorsOpen ? "active" : ""}`} aria-haspopup="menu" aria-expanded={indicatorsOpen} onClick={() => setIndicatorsOpen(v => !v)}>▥ Indicators <span className="edge-tv-caret">⌄</span></button>
               {indicatorsOpen && <div className="edge-tv-indicator-menu" role="menu" aria-label="Chart indicators">
                 <div className="edge-tv-indicator-menu-title">OVERLAYS</div>
+                <button type="button" role="menuitemcheckbox" aria-checked={showFvg} className={showFvg ? "selected" : ""} onClick={() => setShowFvg(v => !v)}><span>Fair Value Gaps (FVG)</span><span className="edge-tv-indicator-check">{showFvg ? "✓" : ""}</span></button>
+                {showFvg && <div className="edge-fvg-menu-settings"><label>Gap filter<select value={fvgFilter} onChange={e => setFvgFilter(e.target.value as typeof fvgFilter)}><option>FVG Only</option><option>BAG Only</option><option>Both</option></select></label><label>Minimum gap<input type="number" min="0" step="0.01" value={fvgMinGap} onChange={e => setFvgMinGap(e.target.value)} /></label><label className="edge-fvg-extend"><input type="checkbox" checked={fvgExtend} onChange={e => setFvgExtend(e.target.checked)} /> Extend to right</label></div>}
                 {PRESETS.map(item => <button type="button" role="menuitemcheckbox" aria-checked={active.some(a => a.id === item.id)} key={item.id} className={active.some(a => a.id === item.id) ? "selected" : ""} onClick={() => setActive(current => current.some(a => a.id === item.id) ? current.filter(a => a.id !== item.id) : [...current, item])}><span>{item.name}</span><span className="edge-tv-indicator-check">{active.some(a => a.id === item.id) ? "✓" : ""}</span></button>)}
                 {active.filter(a => a.source === "pine").map(a => <button type="button" role="menuitem" key={a.id} className="selected" onClick={() => setActive(current => current.filter(v => v.id !== a.id))}><span>{a.name}</span><span>×</span></button>)}
               </div>}

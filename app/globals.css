@@ -2853,3 +2853,14 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
 .edge-drawing-selection-tools button:hover{border-color:#f4bd45}
 .edge-tv-drawing-overlay:not(.drawing-active){pointer-events:none}
 .edge-tv-drawing-overlay:not(.drawing-active) [data-drawing-id]{pointer-events:all}
+
+/* Edge Chart ICT Fair Value Gap overlays */
+.edge-fvg-overlay{position:absolute;left:0;top:0;z-index:4;pointer-events:none;overflow:hidden}
+.edge-fvg-zone{position:absolute;min-height:2px;border:1px solid rgba(8,153,129,.62);background:rgba(8,153,129,.16);pointer-events:none}
+.edge-fvg-zone.bear{border-color:rgba(242,54,69,.62);background:rgba(242,54,69,.16)}
+.edge-fvg-zone span{position:absolute;right:4px;top:2px;font-size:9px;line-height:12px;font-weight:700;color:#8de1c9;text-shadow:0 1px 2px #000;white-space:nowrap}
+.edge-fvg-zone.bear span{color:#ff9aa5}
+.edge-fvg-menu-settings{padding:8px 9px 10px;border-top:1px solid #343b47;margin-top:3px;display:grid;gap:8px}
+.edge-fvg-menu-settings label{display:grid;gap:4px;color:#aeb8c7;font-size:11px}
+.edge-fvg-menu-settings select,.edge-fvg-menu-settings input[type=number]{width:100%;height:30px;border:1px solid #394352;border-radius:5px;background:#101318;color:#e5e7eb;padding:0 7px}
+.edge-fvg-menu-settings .edge-fvg-extend{display:flex;align-items:center;gap:7px}

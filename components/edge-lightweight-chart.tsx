@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 type Candle = { time: string; open: number; high: number; low: number; close: number; volume?: number | null };
 type Indicator = { id: string; name: string; kind: "ema" | "sma" | "zigzag"; period: number; color: string };
+type FvgSettings = { enabled: boolean; filter: "FVG Only" | "BAG Only" | "Both"; minGap: number; extendRight: boolean };
+type FvgZone = { id: string; direction: "bull" | "bear"; start: number; top: number; bottom: number; label: string };
 type ChartModule = {
   createChart: (el: HTMLElement, options: Record<string, unknown>) => any;
   CandlestickSeries: any; BarSeries: any; LineSeries: any; HistogramSeries: any;
@@ -68,9 +70,9 @@ function zigZagPoints(rows: Candle[], depth = 12, deviationPercent = 0.5) {
 }
 
 export default function EdgeLightweightChart({
-  symbol, interval, candles, indicators, livePrice, quoteMode, drawingTool = "cursor", clearDrawingsVersion = 0, onChartType, onIntervalChange, toolbarControls, toolbarActions,
+  symbol, interval, candles, indicators, fvgSettings = { enabled: false, filter: "FVG Only", minGap: 0, extendRight: true }, livePrice, quoteMode, drawingTool = "cursor", clearDrawingsVersion = 0, onChartType, onIntervalChange, toolbarControls, toolbarActions,
 }: {
-  symbol: string; interval: string; candles: Candle[]; indicators: Indicator[];
+  symbol: string; interval: string; candles: Candle[]; indicators: Indicator[]; fvgSettings?: FvgSettings;
   livePrice: number | null; quoteMode: string; drawingTool?: "cursor" | "trend" | "horizontal" | "vertical" | "label" | "fib" | "fib-extension"; clearDrawingsVersion?: number; onChartType?: (type: string) => void; onIntervalChange?: (value: string) => void; toolbarControls?: ReactNode; toolbarActions?: ReactNode;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -315,6 +317,45 @@ export default function EdgeLightweightChart({
     });
   }, [chartType, module]);
 
+  const fvgZones = useMemo(() => {
+    if (!fvgSettings?.enabled || cleanCandles.length < 3) return [] as FvgZone[];
+    const zones: FvgZone[] = [];
+    for (let i = 2; i < cleanCandles.length; i++) {
+      const a = cleanCandles[i - 2], b = cleanCandles[i - 1], c = cleanCandles[i];
+      const bullGap = c.low >= a.high;
+      const bearGap = a.low >= c.high;
+      if (bullGap) {
+        const isFvg = c.close <= b.high;
+        const isBag = c.close > b.high;
+        if ((fvgSettings.filter === "FVG Only" && !isFvg) || (fvgSettings.filter === "BAG Only" && !isBag)) continue;
+        const bottom = a.high, top = c.low;
+        if (top - bottom < Math.max(0, fvgSettings.minGap)) continue;
+        let liveTop = top, filled = false;
+        for (let j = i + 1; j < cleanCandles.length; j++) {
+          const next = cleanCandles[j];
+          if (next.low < bottom) { filled = true; break; }
+          if (next.low < liveTop) liveTop = next.low;
+        }
+        if (!filled && liveTop > bottom) zones.push({ id: `bull-${toEpoch(c.time)}`, direction: "bull", start: toEpoch(a.time), top: liveTop, bottom, label: `${interval} FVG` });
+      }
+      if (bearGap) {
+        const isFvg = c.close >= b.low;
+        const isBag = c.close < b.low;
+        if ((fvgSettings.filter === "FVG Only" && !isFvg) || (fvgSettings.filter === "BAG Only" && !isBag)) continue;
+        const top = a.low, bottom = c.high;
+        if (top - bottom < Math.max(0, fvgSettings.minGap)) continue;
+        let liveBottom = bottom, filled = false;
+        for (let j = i + 1; j < cleanCandles.length; j++) {
+          const next = cleanCandles[j];
+          if (next.high > top) { filled = true; break; }
+          if (next.high > liveBottom) liveBottom = next.high;
+        }
+        if (!filled && top > liveBottom) zones.push({ id: `bear-${toEpoch(c.time)}`, direction: "bear", start: toEpoch(a.time), top, bottom: liveBottom, label: `${interval} FVG` });
+      }
+    }
+    return zones.slice(-80);
+  }, [cleanCandles, fvgSettings, interval]);
+
   return <div className="edge-tv-chart-shell">
     <div className="edge-tv-chart-toolbar">
       <div className="edge-tv-symbol"><span className="edge-tv-search">⌕</span><strong>{symbol.replace("/", "")}</strong><button type="button" title="Symbol">＋</button></div>
@@ -342,6 +383,17 @@ export default function EdgeLightweightChart({
     {loadError && <div className="edge-tv-load-error">{loadError}</div>}
     <div className="edge-tv-chart-stage">
       <div ref={hostRef} className="edge-tv-chart-host" aria-label={`${symbol} ${interval} broker candlestick chart`} />
+      {fvgSettings?.enabled && <div className="edge-fvg-overlay" style={{ width: chartRef.current?.timeScale().width() ?? 0, height: hostRef.current ? hostRef.current.clientHeight - (chartRef.current?.timeScale().height() ?? 0) : 0 }} aria-label="Fair Value Gap zones">
+        {fvgZones.map(zone => {
+          const left = chartRef.current?.timeScale().timeToCoordinate(zone.start);
+          const top = candleSeriesRef.current?.priceToCoordinate(zone.top);
+          const bottom = candleSeriesRef.current?.priceToCoordinate(zone.bottom);
+          if (left == null || top == null || bottom == null) return null;
+          const width = chartRef.current?.timeScale().width() ?? 0;
+          const right = fvgSettings.extendRight ? width : Math.max(left + 8, chartRef.current?.timeScale().timeToCoordinate(toEpoch(cleanCandles.at(-1)?.time || "")) ?? width);
+          return <div key={zone.id} className={`edge-fvg-zone ${zone.direction}`} style={{ left, top: Math.min(top, bottom), width: Math.max(3, right - left), height: Math.max(2, Math.abs(bottom - top)) }}><span>{zone.label}</span></div>;
+        })}
+      </div>}
       <svg data-draw-version={drawVersion} className={`edge-tv-drawing-overlay ${drawingMode ? "drawing-active" : ""}`} style={{ width: chartRef.current?.timeScale().width() ?? 0, height: hostRef.current ? hostRef.current.clientHeight - (chartRef.current?.timeScale().height() ?? 0) : 0 }} onPointerDown={startDrawing} onPointerMove={moveDrawing} onPointerUp={finishDrawing} onPointerCancel={() => { setDraft(null); setFibStep(0); dragDrawingRef.current = null; }} aria-label="Chart drawing surface">
         {[...drawings, ...(draft ? [{ ...draft, id: -1 }] : [])].map(item => {
           const c = drawingCoordinates(item);
