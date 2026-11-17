@@ -2726,3 +2726,108 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
     flex-basis: 540px !important;
   }
 }
+
+
+/* Mobile chart toolbar: compact single-row TradingView-style controls. */
+@media (max-width: 760px) {
+  .edge-tv-chart-toolbar {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 3px !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 4px 5px !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    white-space: nowrap !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .edge-tv-chart-toolbar::-webkit-scrollbar { display: none !important; }
+  .edge-tv-symbol {
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    gap: 3px !important;
+    font-size: 11px !important;
+  }
+  .edge-tv-symbol button { display: none !important; }
+  .edge-tv-search { font-size: 15px !important; }
+  .edge-tv-timeframe-wrap,
+  .edge-tv-chart-types,
+  .edge-tv-indicator-menu-wrap,
+  .edge-tv-navigation-controls,
+  .edge-tv-pine-button,
+  .edge-tv-feed-badge { flex: 0 0 auto !important; }
+  .edge-tv-timeframes {
+    min-height: 29px !important;
+    height: 29px !important;
+    padding: 0 6px !important;
+    gap: 4px !important;
+    font-size: 11px !important;
+  }
+  .edge-tv-chart-types { gap: 0 !important; padding: 0 2px !important; }
+  .edge-tv-chart-types button {
+    width: 26px !important;
+    min-width: 26px !important;
+    height: 28px !important;
+    padding: 2px !important;
+    font-size: 14px !important;
+  }
+  .edge-tv-indicator-menu-trigger {
+    height: 29px !important;
+    min-height: 29px !important;
+    padding: 0 7px !important;
+    gap: 4px !important;
+    font-size: 10px !important;
+    white-space: nowrap !important;
+  }
+  .edge-tv-inline-group {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 2px !important;
+    padding: 0 3px !important;
+  }
+  .edge-tv-inline-group button,
+  .edge-tv-inline-group select {
+    min-width: 26px !important;
+    width: auto !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 5px !important;
+    font-size: 10px !important;
+  }
+  .edge-tv-toolbar-spacer { display: none !important; }
+  .edge-tv-pine-button {
+    width: 30px !important;
+    min-width: 30px !important;
+    height: 29px !important;
+    min-height: 29px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+  }
+  .edge-tv-pine-button::before {
+    content: "⌘";
+    font-size: 16px;
+    line-height: 1;
+  }
+  .edge-tv-feed-badge {
+    min-height: 25px !important;
+    height: 25px !important;
+    padding: 3px 5px !important;
+    font-size: 8px !important;
+  }
+  .edge-tv-ohlc { min-height: 36px !important; height: 36px !important; padding: 0 7px !important; flex-wrap: nowrap !important; white-space: nowrap !important; }
+  .edge-tv-ohlc b { display: inline !important; flex: 0 0 auto !important; margin-left: 4px !important; font-size: 10px !important; }
+}
+@media (max-width: 420px) {
+  .edge-tv-chart-toolbar { gap: 2px !important; padding-inline: 3px !important; }
+  .edge-tv-symbol { font-size: 10px !important; }
+  .edge-tv-chart-types button { width: 24px !important; min-width: 24px !important; }
+  .edge-tv-indicator-menu-trigger { padding-inline: 5px !important; font-size: 9px !important; }
+  .edge-tv-inline-group button { min-width: 24px !important; padding-inline: 4px !important; font-size: 9px !important; }
+  .edge-tv-feed-badge { display: none !important; }
+}

@@ -273,8 +273,8 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
             <div className="edge-tv-inline-group edge-tv-navigation-controls" aria-label="Chart navigation">
               <button type="button" onClick={() => setVisibleCount(v => Math.max(25, Math.round(v / 1.25)))}>＋</button>
               <button type="button" onClick={() => setVisibleCount(v => Math.min(candles.length || 500, Math.round(v * 1.25)))}>－</button>
-              <button type="button" onClick={() => { setViewEnd(null); setReplayIndex(null); setVisibleCount(140); }}>Reset</button>
-              <button type="button" className={replayIndex !== null ? "active" : ""} onClick={beginReplay} disabled={candles.length < 3}>▶ Replay</button>
+              <button type="button" onClick={() => { setViewEnd(null); setReplayIndex(null); setVisibleCount(140); }} title="Reset chart view">↺</button>
+              <button type="button" className={replayIndex !== null ? "active" : ""} onClick={beginReplay} disabled={candles.length < 3} title="Bar replay">▷</button>
               {replayIndex !== null && <>
                 <button type="button" onClick={() => setReplayPlaying(v => !v)}>{replayPlaying ? "Ⅱ" : "▶"}</button>
                 <button type="button" onClick={() => setReplayIndex(v => Math.max(1, (v ?? 1) - 1))}>◀</button>
@@ -285,7 +285,7 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
             </div>
           </>}
           toolbarActions={<>
-            <button type="button" className="edge-tv-pine-button" onClick={() => setStudioOpen(v => !v)}>{studioOpen ? "Close Pine Studio" : "Pine Script Studio"}</button>
+            <button type="button" className="edge-tv-pine-button" title="Pine Script Studio" aria-label="Pine Script Studio" onClick={() => setStudioOpen(v => !v)}>{studioOpen ? "Close Pine Studio" : "Pine Script Studio"}</button>
           </>}
         />
       </div>
