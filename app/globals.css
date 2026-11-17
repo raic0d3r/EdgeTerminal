@@ -2930,3 +2930,10 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
 .edge-drawing-submenu-icon{width:34px;flex:0 0 34px;text-align:center;font-size:24px;line-height:1}
 .edge-drawing-submenu p{padding:0 16px;color:#666;font-size:13px}
 @media(max-width:600px){.edge-drawing-toolbar{width:42px;flex-basis:42px;padding:5px 2px}.edge-drawing-rail{width:36px;flex-basis:36px}.edge-drawing-rail button{width:32px;height:36px;min-height:36px}.edge-drawing-submenu{width:min(285px,calc(100vw - 85px));max-height:68vh}.edge-drawing-submenu button{min-height:48px;font-size:15px}}
+
+/* Fine-line TradingView-style drawing icons */
+.edge-drawing-rail button svg{width:30px;height:30px;display:block;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;margin:auto}
+.edge-drawing-rail button{height:48px;min-height:48px;width:42px;border-radius:10px}
+.edge-drawing-rail{gap:5px}
+.edge-drawing-toolbar-divider{width:32px;height:1px;margin:8px 0;background:#343a45;flex:0 0 1px}
+@media(max-width:600px){.edge-drawing-rail button{width:42px;height:48px;min-height:48px}.edge-drawing-rail button svg{width:32px;height:32px}}
