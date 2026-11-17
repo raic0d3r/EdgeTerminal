@@ -50,6 +50,7 @@ export default function EdgeLightweightChart({
   const candleSeriesRef = useRef<any>(null);
   const volumeSeriesRef = useRef<any>(null);
   const indicatorSeriesRef = useRef<Map<string, any>>(new Map());
+  const drawingPriceLinesRef = useRef<Array<{ series: any; line: any }>>([]);
   const [module, setModule] = useState<ChartModule | null>(null);
   const [chartType, setChartType] = useState<"candles" | "bars" | "line">("candles");
   const [timeframeOpen, setTimeframeOpen] = useState(false);
@@ -187,6 +188,35 @@ export default function EdgeLightweightChart({
     }
   }, [module, indicators, cleanCandles]);
 
+  // Render horizontal drawings as native Lightweight Charts price lines so each
+  // level also receives a matching, readable marker on the right price scale.
+  useEffect(() => {
+    for (const item of drawingPriceLinesRef.current) {
+      try { item.series.removePriceLine(item.line); } catch {}
+    }
+    drawingPriceLinesRef.current = [];
+    const series = candleSeriesRef.current;
+    if (!series) return;
+    const horizontalItems = [...drawings, ...(draft ? [{ ...draft, id: -1 }] : [])].filter(item => item.tool === "horizontal");
+    for (const item of horizontalItems) {
+      const line = series.createPriceLine({
+        price: item.p1,
+        color: "#f4bd45",
+        lineWidth: 2,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: "",
+      });
+      drawingPriceLinesRef.current.push({ series, line });
+    }
+    return () => {
+      for (const item of drawingPriceLinesRef.current) {
+        try { item.series.removePriceLine(item.line); } catch {}
+      }
+      drawingPriceLinesRef.current = [];
+    };
+  }, [drawings, draft, module, chartType]);
+
   useEffect(() => {
     if (!module || !chartRef.current || !cleanCandles.length) return;
     const chart = chartRef.current;
@@ -239,7 +269,7 @@ export default function EdgeLightweightChart({
           if (!c) return null;
           const width = chartRef.current?.timeScale().width() ?? 0;
           const height = hostRef.current ? hostRef.current.clientHeight - (chartRef.current?.timeScale().height() ?? 0) : 0;
-          if (item.tool === "horizontal") return <line key={item.id} x1={0} x2={width} y1={c.y1} y2={c.y1} stroke="#f4bd45" strokeWidth="1.5" strokeDasharray="6 4" />;
+          if (item.tool === "horizontal") return null;
           if (item.tool === "vertical") return <line key={item.id} x1={c.x1} x2={c.x1} y1={0} y2={height} stroke="#f4bd45" strokeWidth="1.5" strokeDasharray="6 4" />;
           return <line key={item.id} x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2} stroke="#f4bd45" strokeWidth="2" />;
         })}

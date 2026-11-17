@@ -98,7 +98,7 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
   const [status, setStatus] = useState("Loading broker candles…");
   const [busy, setBusy] = useState(false);
-  const [active, setActive] = useState<Indicator[]>(PRESETS.slice(0, 2));
+  const [active, setActive] = useState<Indicator[]>([]);
   const [studioOpen, setStudioOpen] = useState(false);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const [script, setScript] = useState('//@version=5\nindicator("My EMA", overlay=true)\nplot(ta.ema(close, 20), title="EMA 20", color=color.orange)');
