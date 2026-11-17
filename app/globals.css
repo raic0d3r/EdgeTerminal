@@ -2380,3 +2380,27 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
   .edge-chart-canvas-wrap{height:520px !important;min-height:520px !important;flex-basis:520px !important}
   .edge-chart-canvas{height:520px !important;min-height:520px !important}
 }
+
+/* Dedicated, non-clipping time axis: kept outside the plot SVG viewport. */
+.edge-chart-canvas-wrap{display:flex!important;flex-direction:row!important;align-items:stretch!important;min-height:380px!important;overflow:hidden!important}
+.edge-chart-plot-stack{display:flex;flex:1 1 auto;flex-direction:column;min-width:0;min-height:0;height:100%;overflow:hidden}
+.edge-chart-plot-stack .edge-chart-canvas{display:block;flex:1 1 auto;width:100%;height:calc(100% - 64px)!important;min-height:300px!important;max-height:none}
+.edge-chart-time-axis{display:block;flex:0 0 64px;width:100%;height:64px;min-height:64px;background:#101318;border-top:1px solid #343943;overflow:visible}
+@media(max-width:700px){.edge-chart-canvas-wrap{min-height:390px!important}.edge-chart-plot-stack .edge-chart-canvas{min-height:300px!important}.edge-chart-time-axis{flex-basis:64px;height:64px}}
+
+/* Native Lightweight Charts surface: TradingView-style layout, broker-fed. */
+.edge-chart-canvas-wrap{height:clamp(480px,68vh,760px)!important;min-height:480px!important;flex:0 0 auto!important;display:flex!important;flex-direction:row!important;overflow:hidden!important;background:#050607!important}
+.edge-chart-plot-stack{display:flex!important;flex:1 1 auto!important;min-width:0!important;min-height:0!important;height:100%!important;overflow:hidden!important}
+.edge-tv-chart-shell{display:flex;flex-direction:column;width:100%;height:100%;min-width:0;min-height:0;background:#050607;color:#d1d4dc;overflow:hidden}
+.edge-tv-chart-toolbar{height:48px;min-height:48px;display:flex;align-items:center;gap:12px;padding:0 12px;border-bottom:1px solid #292d35;background:#050607;white-space:nowrap;overflow-x:auto}
+.edge-tv-symbol{display:flex;align-items:center;gap:9px;font-size:15px;color:#dce1e9}
+.edge-tv-search{font-size:23px;color:#aab2bf}.edge-tv-symbol button,.edge-tv-chart-types button{border:0;background:transparent;color:#c4cad4;font-size:19px;padding:7px;cursor:pointer;border-radius:5px}
+.edge-tv-timeframes{display:flex;align-items:center;gap:10px;padding:0 12px;border-left:1px solid #30343d;color:#e3e6ec;font-size:14px}
+.edge-tv-caret{color:#9ba4b2}.edge-tv-chart-types{display:flex;align-items:center;gap:3px;padding:0 8px;border-left:1px solid #30343d;border-right:1px solid #30343d}
+.edge-tv-chart-types button{min-width:36px;height:34px}.edge-tv-chart-types button.active,.edge-tv-chart-types button:hover{background:#292e37;color:#fff}
+.edge-tv-indicator-label{font-size:14px;color:#d7dce5;padding:7px 10px;border-radius:5px}.edge-tv-toolbar-spacer{flex:1}.edge-tv-feed-badge{font-size:10px;letter-spacing:.08em;color:#16b89a;border:1px solid rgba(22,184,154,.3);border-radius:4px;padding:4px 6px}
+.edge-tv-ohlc{height:36px;min-height:36px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#050607;color:#aeb7c4;font-size:13px;white-space:nowrap;overflow:hidden}
+.edge-tv-ohlc strong{color:#e4e8ef}.edge-tv-ohlc b{color:#16b89a;font-weight:500;margin-left:6px}.edge-tv-market-dot{width:9px;height:9px;border-radius:50%;background:#e5b72e;display:inline-block;flex:0 0 auto}
+.edge-tv-chart-host{width:100%;height:calc(100% - 84px);min-height:300px;flex:1 1 auto;position:relative;touch-action:pan-y}
+.edge-tv-load-error{padding:8px 12px;color:#f0b44a;font-size:12px;background:#17191f}
+@media(max-width:700px){.edge-tv-chart-toolbar{gap:5px;padding:0 6px}.edge-tv-indicator-label{font-size:12px;padding:5px}.edge-tv-ohlc{font-size:11px}.edge-chart-canvas-wrap{height:520px!important;min-height:520px!important}}

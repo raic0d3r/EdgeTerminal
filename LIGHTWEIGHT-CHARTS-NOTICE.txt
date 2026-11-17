@@ -1,0 +1,7 @@
+This project loads TradingView Lightweight Charts v5.0.8 at runtime from jsDelivr:
+https://github.com/tradingview/lightweight-charts
+
+Lightweight Charts is an open-source library distributed under the Apache License 2.0.
+It is a chart rendering library; this project supplies its own broker data through the
+existing EdgeTerminal market API. It is not the proprietary TradingView Advanced Charts
+product and does not use TradingView's market-data feed.

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchMarketData } from "@/lib/market-selection";
+import EdgeLightweightChart from "@/components/edge-lightweight-chart";
 
 type Candle = { time: string; open: number; high: number; low: number; close: number; volume?: number | null };
 type Indicator = { id: string; name: string; kind: "ema" | "sma"; period: number; color: string; source: "builtin" | "pine" };
@@ -151,7 +152,7 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
   const y = (v: number) => chartTop + ((maxPrice - v) / (maxPrice - minPrice)) * (chartBottom-chartTop);
   const pointerPoint = (e: React.PointerEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    return { x: Math.max(chartLeft, Math.min(chartRight, (e.clientX - rect.left) / rect.width * 1000)), y: Math.max(chartTop, Math.min(chartBottom, (e.clientY - rect.top) / rect.height * 520)) };
+    return { x: Math.max(chartLeft, Math.min(chartRight, (e.clientX - rect.left) / rect.width * 1000)), y: Math.max(chartTop, Math.min(chartBottom, (e.clientY - rect.top) / rect.height * 414)) };
   };
   const series = (kind: "ema" | "sma", period: number) => average(closes, period, kind === "ema");
   const paths = useMemo(() => active.map(ind => {
@@ -238,44 +239,16 @@ export default function EdgeChartStudio({ symbol, interval, provider }: { symbol
         <button type="button" title="Vertical line" aria-label="Vertical line" className={drawingTool === "vertical" ? "selected" : ""} onClick={() => setDrawingTool("vertical")}>┃</button>
         <button type="button" title="Clear drawings" aria-label="Clear drawings" onClick={() => setDrawings([])}>⌫</button>
       </aside>
-      <svg className={`edge-chart-canvas${dragging ? " is-dragging" : ""}`} viewBox="0 0 1000 520" preserveAspectRatio="none" role="img" aria-label={`${symbol} ${interval} candlestick chart with enabled indicators`} onWheel={e => { e.preventDefault(); setVisibleCount(v => Math.max(25, Math.min(candles.length || 500, Math.round(v * (e.deltaY > 0 ? 1.12 : 0.89))))); }} onPointerDown={e => { (e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId); if (drawingTool !== "cursor") { const p = pointerPoint(e); drawingRef.current = { tool: drawingTool, x1: p.x, y1: p.y, x2: p.x, y2: p.y }; return; } dragRef.current = { x: e.clientX, end: effectiveEnd }; setDragging(true); }} onPointerMove={e => { if (drawingRef.current) { const p = pointerPoint(e); drawingRef.current = { ...drawingRef.current, x2: p.x, y2: p.y }; return; } if (!dragRef.current) return; const dx = e.clientX - dragRef.current.x; const shift = Math.round(dx / Math.max(1, e.currentTarget.clientWidth) * visibleCount); const base = dragRef.current.end ?? candles.length; setViewEnd(Math.max(Math.min(candles.length, visibleCount), Math.min(candles.length, base - shift))); setReplayPlaying(false); }} onPointerUp={() => { if (drawingRef.current) { const d = drawingRef.current; setDrawings(current => [...current, { ...d, id: Date.now() }]); drawingRef.current = null; return; } dragRef.current = null; setDragging(false); }} onPointerCancel={() => { drawingRef.current = null; dragRef.current = null; setDragging(false); }}>
-        {[0,1,2,3,4].map(i => <g key={i}><line x1="12" x2="910" y1={chartTop+i*((chartBottom-chartTop)/4)} y2={chartTop+i*((chartBottom-chartTop)/4)} stroke="#34363d" strokeDasharray="2 5"/><text x="918" y={chartTop+4+i*((chartBottom-chartTop)/4)} fill="#a0a7b4" fontSize="11">{(maxPrice-(i/4)*(maxPrice-minPrice)).toFixed(symbol==="BTC/USD"?1:2)}</text></g>)}
-        {displayCandles.map((c, i) => {
-          if (i === 0) return null;
-          const previousDay = new Date(displayCandles[i - 1].time).toLocaleDateString();
-          const currentDay = new Date(c.time).toLocaleDateString();
-          return previousDay !== currentDay ? <g key={`day-${c.time}`}><line x1={x(i)} x2={x(i)} y1={chartTop} y2={timeAxisBottom} stroke="#7d8796" strokeDasharray="4 5" opacity=".8"/><text x={x(i)+5} y="506" fill="#c0c7d2" fontSize="11">{new Date(c.time).toLocaleDateString(undefined,{day:"2-digit",month:"short"})}</text></g> : null;
-        })}
-        {drawings.map(d => <g key={d.id} pointerEvents="none"><line x1={d.tool === "vertical" ? d.x1 : d.x1} x2={d.tool === "vertical" ? d.x1 : d.tool === "horizontal" ? 910 : d.x2} y1={d.tool === "horizontal" ? d.y1 : d.y1} y2={d.tool === "horizontal" ? d.y1 : d.tool === "vertical" ? volumeBottom : d.y2} stroke="#f5c451" strokeWidth="1.5" strokeDasharray="5 3"/></g>)}
-        <line x1="12" x2="910" y1={volumeTop-8} y2={volumeTop-8} stroke="#34363d"/><text x="18" y={volumeTop+10} fill="#a0a7b4" fontSize="10">VOL · BROKER TICKS</text>
-        {(() => { const maxVol = Math.max(1, ...displayCandles.map(c => Number(c.volume) || 0)); return displayCandles.map((c,i) => { const v = Number(c.volume) || 0; const h = v / maxVol * (volumeBottom-volumeTop-12); const w = Math.max(1.5, Math.min(8, 880/displayCandles.length*0.72)); return <rect key={`vol-${c.time}-${i}`} x={x(i)-w/2} y={volumeBottom-h} width={w} height={h} fill={c.close>=c.open ? "#087f70" : "#8d3945"} opacity="0.78"/>; }); })()}
-        {(() => { const c = displayCandles.at(-1); return c ? <text x="18" y="18" fill="#d8dce4" fontSize="12" fontWeight="600">O {c.open.toFixed(symbol==="BTC/USD"?1:2)}  H {c.high.toFixed(symbol==="BTC/USD"?1:2)}  L {c.low.toFixed(symbol==="BTC/USD"?1:2)}  C {c.close.toFixed(symbol==="BTC/USD"?1:2)}</text> : null; })()}
-        {displayCandles.map((c,i) => {
-          const cx=x(i), bodyTop=y(Math.max(c.open,c.close)), bodyBottom=y(Math.min(c.open,c.close));
-          const up=c.close>=c.open, color=up?"#00c896":"#f05265";
-          const width=Math.max(2, Math.min(8, 880/displayCandles.length*0.68));
-          return <g key={`${c.time}-${i}`}><line x1={cx} x2={cx} y1={y(c.high)} y2={y(c.low)} stroke={color} strokeWidth="1.2"/><rect x={cx-width/2} y={bodyTop} width={width} height={Math.max(1.5,bodyBottom-bodyTop)} fill={color}/></g>;
-        })}
-        {paths.map(p => <path key={p.id} d={p.d} fill="none" stroke={p.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/> )}
-        {(() => { const displayedPrice = replayIndex === null ? livePrice : candles[replayIndex]?.close; return displayedPrice != null && Number.isFinite(displayedPrice) ? <g><line x1="12" x2="910" y1={y(displayedPrice)} y2={y(displayedPrice)} stroke={replayIndex === null && quoteMode === "live" ? "#e6b84b" : "#87909e"} strokeDasharray="5 4" strokeWidth="1.2"/><rect x="914" y={y(displayedPrice)-10} width="78" height="20" rx="3" fill={replayIndex === null && quoteMode === "live" ? "#d9a52e" : "#626b78"}/><text x="953" y={y(displayedPrice)+4} textAnchor="middle" fill="#111317" fontSize="11" fontWeight="700">{displayedPrice.toFixed(symbol === "BTC/USD" ? 1 : 2)}</text></g> : null; })()}
-        <rect x="0" y={timeAxisTop} width="1000" height={timeAxisBottom-timeAxisTop} fill="#101318" />
-        <line x1="12" x2="990" y1={timeAxisTop} y2={timeAxisTop} stroke="#343943" /><text x="18" y="438" fill="#8f98a7" fontSize="10" letterSpacing=".5">TIME</text>
-        {displayCandles[0] && <text x={chartLeft} y="506" fill="#c0c7d2" fontSize="11">{new Date(displayCandles[0].time).toLocaleDateString(undefined,{day:"2-digit",month:"short",year:"numeric"})}</text>}
-        {displayCandles.map((c, i) => {
-          if (i === 0) return null;
-          const previousDay = new Date(displayCandles[i - 1].time).toLocaleDateString();
-          const currentDay = new Date(c.time).toLocaleDateString();
-          return previousDay !== currentDay ? <text key={`day-label-${c.time}`} x={x(i)+5} y="506" fill="#c0c7d2" fontSize="11">{new Date(c.time).toLocaleDateString(undefined,{day:"2-digit",month:"short"})}</text> : null;
-        })}
-        {Array.from({ length: 6 }, (_, tick) => {
-          const index = Math.min(displayCandles.length - 1, Math.round(tick * (displayCandles.length - 1) / 5));
-          const candle = displayCandles[index];
-          if (!candle) return null;
-          const date = new Date(candle.time);
-          const label = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-          return <g key={`time-tick-${tick}`}><line x1={x(index)} x2={x(index)} y1={timeAxisTop + 8} y2={timeAxisTop + 16} stroke="#7d8796"/><text x={x(index)} y="480" textAnchor={tick === 0 ? "start" : tick === 5 ? "end" : "middle"} fill="#a0a7b4" fontSize="10">{label}</text></g>;
-        })}
-      </svg>
+      <div className="edge-chart-plot-stack">
+        <EdgeLightweightChart
+          symbol={symbol}
+          interval={interval}
+          candles={displayCandles}
+          indicators={active}
+          livePrice={replayIndex === null && viewEnd === null ? livePrice : null}
+          quoteMode={quoteMode}
+        />
+      </div>
     </div> : <div className="edge-chart-empty">No chart rendered because verified broker candle data is unavailable. Check the selected broker connection and instrument.</div>}
     <div className="edge-chart-footer"><span>{replayIndex !== null ? `Replay close: ${candles[replayIndex]?.close ?? "—"}` : livePrice != null ? `Live price: ${livePrice.toFixed(symbol === "BTC/USD" ? 1 : 2)}` : candles.length ? `Latest close: ${candles[candles.length-1].close}` : "Waiting for verified data"}</span><span>{replayIndex !== null ? "Historical replay · future candles hidden" : "Broker OHLC + quote · No synthetic candles"}</span></div>
     {studioOpen && <section className="edge-pine-studio">
