@@ -170,7 +170,6 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
     next[next.length - 1] = last;
     return next;
   }, [visibleCandles, livePrice, quoteMode, replayIndex, viewEnd]);
-  const closes = useMemo(() => candles.map(c => Number(c.close)), [candles]);
   const priceRange = useMemo(() => {
     if (!displayCandles.length) return { min: 0, max: 1 };
     const lows = displayCandles.map(c => c.low);
@@ -188,17 +187,6 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
     const rect = e.currentTarget.getBoundingClientRect();
     return { x: Math.max(chartLeft, Math.min(chartRight, (e.clientX - rect.left) / rect.width * 1000)), y: Math.max(chartTop, Math.min(chartBottom, (e.clientY - rect.top) / rect.height * 414)) };
   };
-  const series = (kind: "ema" | "sma", period: number) => average(closes, period, kind === "ema");
-  const paths = useMemo(() => active.map(ind => {
-    const values = series(ind.kind, ind.period).slice(visibleStart, effectiveEnd);
-    let started = false;
-    const d = values.map((v, i) => {
-      if (v == null) return "";
-      const command = started ? "L" : "M"; started = true;
-      return `${command} ${x(i).toFixed(2)} ${y(v).toFixed(2)}`;
-    }).filter(Boolean).join(" ");
-    return { ...ind, d };
-  }), [active, candles, visibleStart, effectiveEnd, minPrice, maxPrice, displayCandles.length]);
 
   useEffect(() => {
     if (!replayPlaying || replayIndex === null) return;
