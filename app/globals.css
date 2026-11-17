@@ -2868,3 +2868,48 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
 .edge-tv-drawing-overlay.cursor-active{pointer-events:none;cursor:default;touch-action:none}
 .edge-tv-drawing-overlay.cursor-active [data-drawing-id]{pointer-events:all;}
 .edge-tv-drawing-overlay.cursor-active [data-drawing-id]:hover{cursor:move}
+
+/* Mobile dropdown fix: keep timeframe and indicator popovers inside the chart's visible stacking context. */
+@media (max-width: 760px) {
+  .edge-chart-plot-stack,
+  .edge-tv-chart-shell {
+    overflow: visible !important;
+  }
+  .edge-tv-chart-toolbar {
+    position: relative !important;
+    z-index: 300 !important;
+    isolation: isolate;
+    overflow: visible !important;
+  }
+  .edge-tv-timeframe-wrap,
+  .edge-tv-indicator-menu-wrap {
+    position: relative !important;
+    z-index: 310 !important;
+  }
+  .edge-tv-timeframe-menu,
+  .edge-tv-indicator-menu {
+    position: absolute !important;
+    top: calc(100% + 8px) !important;
+    left: 0 !important;
+    right: auto !important;
+    width: min(270px, calc(100vw - 76px)) !important;
+    max-width: calc(100vw - 76px) !important;
+    max-height: min(58vh, 430px) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    z-index: 9999 !important;
+    border: 1px solid #414957 !important;
+    border-radius: 10px !important;
+    background: #171a20 !important;
+    color: #e8edf5 !important;
+    box-shadow: 0 16px 42px rgba(0,0,0,.72) !important;
+  }
+  .edge-tv-timeframe-group { border-color: #343b47 !important; }
+  .edge-tv-timeframe-group-title { color: #9aa5b5 !important; }
+  .edge-tv-timeframe-group button { color: #e8edf5 !important; }
+  .edge-tv-timeframe-group button:hover { background: #292f39 !important; }
+  .edge-tv-timeframe-group button.selected { background: #3a2c0e !important; color: #ffd05a !important; }
+  .edge-tv-indicator-menu button { color: #e8edf5 !important; }
+  .edge-tv-indicator-menu button:hover,
+  .edge-tv-indicator-menu button.selected { background: #292f39 !important; color: #ffd05a !important; }
+}
