@@ -76,7 +76,35 @@ export default function EdgeLightweightChart({
   livePrice: number | null; quoteMode: string; drawingTool?: "cursor" | "trend" | "horizontal" | "vertical" | "label" | "fib" | "fib-extension"; clearDrawingsVersion?: number; onChartType?: (type: string) => void; onIntervalChange?: (value: string) => void; toolbarControls?: ReactNode; toolbarActions?: ReactNode;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const [drawings, setDrawings] = useState<Array<{ id: number; tool: "trend" | "horizontal" | "vertical" | "label" | "fib" | "fib-extension"; t1: any; p1: number; t2: any; p2: number; t3?: any; p3?: number; text?: string; locked?: boolean }>>([]);
+  type Drawing = { id: number; tool: "trend" | "horizontal" | "vertical" | "label" | "fib" | "fib-extension"; t1: any; p1: number; t2: any; p2: number; t3?: any; p3?: number; text?: string; locked?: boolean };
+  const [drawings, setDrawings] = useState<Drawing[]>([]);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const undoStackRef = useRef<Drawing[][]>([]);
+  const redoStackRef = useRef<Drawing[][]>([]);
+  const drawingsRef = useRef<Drawing[]>([]);
+  drawingsRef.current = drawings;
+  function recordDrawingChange(next: Drawing[]) {
+    undoStackRef.current = [...undoStackRef.current, drawingsRef.current.map(d => ({ ...d }))].slice(-100);
+    redoStackRef.current = [];
+    setCanUndo(true); setCanRedo(false);
+    drawingsRef.current = next;
+    setDrawings(next);
+  }
+  function undoDrawing() {
+    const previous = undoStackRef.current.pop();
+    if (!previous) return;
+    redoStackRef.current = [...redoStackRef.current, drawingsRef.current.map(d => ({ ...d }))].slice(-100);
+    drawingsRef.current = previous; setDrawings(previous);
+    setCanUndo(undoStackRef.current.length > 0); setCanRedo(true); setSelectedDrawing(null);
+  }
+  function redoDrawing() {
+    const next = redoStackRef.current.pop();
+    if (!next) return;
+    undoStackRef.current = [...undoStackRef.current, drawingsRef.current.map(d => ({ ...d }))].slice(-100);
+    drawingsRef.current = next; setDrawings(next);
+    setCanUndo(true); setCanRedo(redoStackRef.current.length > 0); setSelectedDrawing(null);
+  }
   const [selectedDrawing, setSelectedDrawing] = useState<number | null>(null);
   const dragDrawingRef = useRef<{ id: number; startX: number; startY: number; original: any } | null>(null);
   const [draft, setDraft] = useState<{ tool: "trend" | "horizontal" | "vertical" | "fib" | "fib-extension"; t1: any; p1: number; t2: any; p2: number; t3?: any; p3?: number; locked?: boolean; text?: string } | null>(null);
@@ -95,7 +123,26 @@ export default function EdgeLightweightChart({
   const digits = symbol === "BTC/USD" ? 1 : 2;
   const drawingMode = drawingTool !== "cursor";
 
-  useEffect(() => { setDrawings([]); setDraft(null); }, [clearDrawingsVersion]);
+  useEffect(() => {
+    if (drawingsRef.current.length) recordDrawingChange([]);
+    setDraft(null); setSelectedDrawing(null);
+  // A clear action is represented by the version counter.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clearDrawingsVersion]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(target?.tagName || "")) return;
+      if (event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        if (event.shiftKey) redoDrawing(); else undoDrawing();
+      } else if (event.key.toLowerCase() === "y") { event.preventDefault(); redoDrawing(); }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
 
   function drawingPoint(event: React.PointerEvent<SVGSVGElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -134,7 +181,7 @@ export default function EdgeLightweightChart({
     if (!point) return;
     if (drawingTool === "label") {
       const text = window.prompt("Enter chart label:", "Label");
-      if (text?.trim()) setDrawings(current => [...current, { id: Date.now() + current.length, tool: "label", t1: point.time, p1: point.price, t2: point.time, p2: point.price, text: text.trim() }]);
+      if (text?.trim()) recordDrawingChange([...drawingsRef.current, { id: Date.now(), tool: "label", t1: point.time, p1: point.price, t2: point.time, p2: point.price, text: text.trim() }]);
       return;
     }
     const tool = drawingTool as "trend" | "horizontal" | "vertical" | "fib" | "fib-extension";
@@ -163,7 +210,7 @@ export default function EdgeLightweightChart({
         const x = timeScale?.timeToCoordinate(value);
         return x == null ? value : (timeScale.coordinateToTime(x + shift) ?? value);
       };
-      setDrawings(current => current.map(d => d.id !== drag.id ? d : d.tool === "horizontal" ? { ...d, p1: d.p1 + deltaPrice, p2: d.p2 + deltaPrice } : d.tool === "vertical" ? { ...d, t1: shiftedTime(d.t1), t2: shiftedTime(d.t2) } : { ...d, t1: shiftedTime(d.t1), t2: shiftedTime(d.t2), ...(d.t3 != null ? { t3: shiftedTime(d.t3), p3: (d.p3 ?? 0) + deltaPrice } : {}), p1: d.p1 + deltaPrice, p2: d.p2 + deltaPrice }));
+      setDrawings(current => { const next = current.map(d => d.id !== drag.id ? d : d.tool === "horizontal" ? { ...d, p1: d.p1 + deltaPrice, p2: d.p2 + deltaPrice } : d.tool === "vertical" ? { ...d, t1: shiftedTime(d.t1), t2: shiftedTime(d.t2) } : { ...d, t1: shiftedTime(d.t1), t2: shiftedTime(d.t2), ...(d.t3 != null ? { t3: shiftedTime(d.t3), p3: (d.p3 ?? 0) + deltaPrice } : {}), p1: d.p1 + deltaPrice, p2: d.p2 + deltaPrice }); drawingsRef.current = next; return next; });
       dragDrawingRef.current = { ...drag, original: { ...original, point } };
       return;
     }
@@ -172,10 +219,18 @@ export default function EdgeLightweightChart({
     if (point) setDraft(current => current ? current.tool === "fib-extension" && fibStep === 3 ? { ...current, t3: point.time, p3: point.price } : { ...current, t2: point.time, p2: point.price } : null);
   }
   function finishDrawing() {
-    if (dragDrawingRef.current) { dragDrawingRef.current = null; return; }
+    if (dragDrawingRef.current) {
+      const drag = dragDrawingRef.current;
+      dragDrawingRef.current = null;
+      const { point: _point, ...before } = drag.original;
+      // Commit the entire drag as one undo step, regardless of pointer-move count.
+      undoStackRef.current = [...undoStackRef.current, drawingsRef.current.map(d => d.id === drag.id ? { ...before } as Drawing : { ...d })].slice(-100);
+      redoStackRef.current = []; setCanUndo(true); setCanRedo(false);
+      return;
+    }
     if (!draft) return;
     if (draft.tool === "fib-extension" && fibStep < 3) return;
-    setDrawings(current => [...current, { ...draft, id: Date.now() + current.length }]);
+    recordDrawingChange([...drawingsRef.current, { ...draft, id: Date.now() }]);
     setDraft(null);
     setFibStep(0);
   }
@@ -382,6 +437,10 @@ export default function EdgeLightweightChart({
         <button type="button" className={chartType === "candles" ? "active" : ""} onClick={() => { setChartType("candles"); onChartType?.("candles"); }} title="Candles">▥</button>
         <button type="button" className={chartType === "line" ? "active" : ""} onClick={() => { setChartType("line"); onChartType?.("line"); }} title="Line">⌁</button>
       </div>
+      <div className="edge-tv-inline-group edge-tv-history-controls" aria-label="Undo and redo">
+        <button type="button" onClick={undoDrawing} disabled={!canUndo} title="Undo (Ctrl/⌘+Z)" aria-label="Undo">↶</button>
+        <button type="button" onClick={redoDrawing} disabled={!canRedo} title="Redo (Ctrl/⌘+Shift+Z)" aria-label="Redo">↷</button>
+      </div>
       {toolbarControls}
       <div className="edge-tv-toolbar-spacer" />
       {toolbarActions}
@@ -429,7 +488,7 @@ export default function EdgeLightweightChart({
           return <g key={item.id}><line x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2} {...common} /><line x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2} stroke="transparent" strokeWidth="14" data-drawing-id={item.id} style={{ pointerEvents: "stroke", cursor: item.locked ? "not-allowed" : "move" }} /></g>;
         })}
       </svg>
-      {selectedDrawing !== null && <div className="edge-drawing-selection-tools"><button type="button" onClick={() => setDrawings(current => current.map(d => d.id === selectedDrawing ? { ...d, locked: !d.locked } : d))}>{drawings.find(d => d.id === selectedDrawing)?.locked ? "Unlock" : "Lock"}</button><button type="button" onClick={() => { setDrawings(current => current.filter(d => d.id !== selectedDrawing)); setSelectedDrawing(null); }}>Delete</button><button type="button" onClick={() => setSelectedDrawing(null)}>Done</button></div>}
+      {selectedDrawing !== null && <div className="edge-drawing-selection-tools"><button type="button" onClick={() => recordDrawingChange(drawingsRef.current.map(d => d.id === selectedDrawing ? { ...d, locked: !d.locked } : d))}>{drawings.find(d => d.id === selectedDrawing)?.locked ? "Unlock" : "Lock"}</button><button type="button" onClick={() => { recordDrawingChange(drawingsRef.current.filter(d => d.id !== selectedDrawing)); setSelectedDrawing(null); }}>Delete</button><button type="button" onClick={() => setSelectedDrawing(null)}>Done</button></div>}
     </div>
   </div>;
 }
