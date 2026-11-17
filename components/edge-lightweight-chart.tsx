@@ -6,6 +6,7 @@ type Candle = { time: string; open: number; high: number; low: number; close: nu
 type Indicator = { id: string; name: string; kind: "ema" | "sma" | "zigzag"; period: number; color: string };
 type FvgSettings = { enabled: boolean; filter: "FVG Only" | "BAG Only" | "Both"; minGap: number; extendRight: boolean };
 type FvgZone = { id: string; direction: "bull" | "bear"; start: number; top: number; bottom: number; label: string };
+type DrawTool = "cursor" | "trend" | "horizontal" | "vertical" | "label" | "fib" | "fib-extension" | "long-position" | "short-position" | "position-forecast" | "bars-pattern" | "ghost-feed" | "sector" | "anchored-vwap" | "fixed-range-volume" | "anchored-volume" | "price-range" | "date-range" | "date-price-range" | "brush" | "highlighter" | "arrow-marker" | "arrow" | "arrow-up" | "arrow-down" | "rectangle" | "rotated-rectangle" | "path" | "circle" | "ellipse" | "polyline" | "triangle" | "arc" | "curve" | "double-curve";
 type ChartModule = {
   createChart: (el: HTMLElement, options: Record<string, unknown>) => any;
   CandlestickSeries: any; BarSeries: any; LineSeries: any; HistogramSeries: any;
@@ -73,10 +74,10 @@ export default function EdgeLightweightChart({
   symbol, interval, candles, indicators, fvgSettings = { enabled: false, filter: "FVG Only", minGap: 0, extendRight: true }, livePrice, quoteMode, drawingTool = "cursor", clearDrawingsVersion = 0, onChartType, onIntervalChange, toolbarControls, toolbarActions, globalDrawingsLocked = false, drawingsVisible = true,
 }: {
   symbol: string; interval: string; candles: Candle[]; indicators: Indicator[]; fvgSettings?: FvgSettings;
-  livePrice: number | null; quoteMode: string; drawingTool?: "cursor" | "trend" | "horizontal" | "vertical" | "label" | "fib" | "fib-extension" | "long-position" | "short-position" | "position-forecast" | "bars-pattern" | "ghost-feed" | "sector" | "anchored-vwap" | "fixed-range-volume" | "anchored-volume" | "price-range" | "date-range" | "date-price-range"; clearDrawingsVersion?: number; onChartType?: (type: string) => void; onIntervalChange?: (value: string) => void; toolbarControls?: ReactNode; toolbarActions?: ReactNode; globalDrawingsLocked?: boolean; drawingsVisible?: boolean;
+  livePrice: number | null; quoteMode: string; drawingTool?: DrawTool; clearDrawingsVersion?: number; onChartType?: (type: string) => void; onIntervalChange?: (value: string) => void; toolbarControls?: ReactNode; toolbarActions?: ReactNode; globalDrawingsLocked?: boolean; drawingsVisible?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
-  type Drawing = { id: number; tool: "trend" | "horizontal" | "vertical" | "label" | "fib" | "fib-extension" | "long-position" | "short-position" | "position-forecast" | "bars-pattern" | "ghost-feed" | "sector" | "anchored-vwap" | "fixed-range-volume" | "anchored-volume" | "price-range" | "date-range" | "date-price-range"; t1: any; p1: number; t2: any; p2: number; t3?: any; p3?: number; text?: string; locked?: boolean };
+  type Drawing = { id: number; tool: Exclude<DrawTool, "cursor">; points?: Array<{ time: any; price: number }>; t1: any; p1: number; t2: any; p2: number; t3?: any; p3?: number; text?: string; locked?: boolean };
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
@@ -107,7 +108,7 @@ export default function EdgeLightweightChart({
   }
   const [selectedDrawing, setSelectedDrawing] = useState<number | null>(null);
   const dragDrawingRef = useRef<{ id: number; startX: number; startY: number; handle?: "start" | "end" | null; original: any } | null>(null);
-  const [draft, setDraft] = useState<{ tool: "trend" | "horizontal" | "vertical" | "fib" | "fib-extension" | "long-position" | "short-position" | "position-forecast" | "bars-pattern" | "ghost-feed" | "sector" | "anchored-vwap" | "fixed-range-volume" | "anchored-volume" | "price-range" | "date-range" | "date-price-range"; t1: any; p1: number; t2: any; p2: number; t3?: any; p3?: number; locked?: boolean; text?: string } | null>(null);
+  const [draft, setDraft] = useState<{ tool: Exclude<DrawTool, "cursor" | "label">; points?: Array<{ time: any; price: number }>; t1: any; p1: number; t2: any; p2: number; t3?: any; p3?: number; locked?: boolean; text?: string } | null>(null);
   const [drawVersion, setDrawVersion] = useState(0);
   const [fibStep, setFibStep] = useState(0);
   const chartRef = useRef<any>(null);
@@ -207,7 +208,7 @@ export default function EdgeLightweightChart({
       recordDrawingChange([...drawingsRef.current, { id: Date.now(), tool, t1: point.time, p1: point.price, t2: endTime, p2: last?.close ?? point.price }]);
       return;
     }
-    setDraft({ tool, t1: point.time, p1: point.price, t2: point.time, p2: point.price });
+    setDraft({ tool, t1: point.time, p1: point.price, t2: point.time, p2: point.price, ...(tool === "brush" || tool === "highlighter" ? { points: [point] } : {}) });
     if (tool === "fib-extension") setFibStep(1);
   }
   function moveDrawing(event: React.PointerEvent<SVGSVGElement>) {
@@ -236,7 +237,7 @@ export default function EdgeLightweightChart({
     }
     if (!draft) return;
     const point = drawingPoint(event);
-    if (point) setDraft(current => current ? current.tool === "fib-extension" && fibStep === 3 ? { ...current, t3: point.time, p3: point.price } : { ...current, t2: point.time, p2: point.price } : null);
+    if (point) setDraft(current => current ? (current.tool === "brush" || current.tool === "highlighter") ? { ...current, t2: point.time, p2: point.price, points: [...(current.points || []), point] } : current.tool === "fib-extension" && fibStep === 3 ? { ...current, t3: point.time, p3: point.price } : { ...current, t2: point.time, p2: point.price } : null);
   }
   function finishDrawing() {
     if (dragDrawingRef.current) {
@@ -254,7 +255,7 @@ export default function EdgeLightweightChart({
     setDraft(null);
     setFibStep(0);
   }
-  function drawingCoordinates(item: { tool: "trend" | "horizontal" | "vertical" | "label" | "fib" | "fib-extension" | "long-position" | "short-position" | "position-forecast" | "bars-pattern" | "ghost-feed" | "sector" | "anchored-vwap" | "fixed-range-volume" | "anchored-volume" | "price-range" | "date-range" | "date-price-range"; t1: any; p1: number; t2: any; p2: number; t3?: any; p3?: number }) {
+  function drawingCoordinates(item: { tool: Exclude<DrawTool, "cursor">; points?: Array<{ time: any; price: number }>; t1: any; p1: number; t2: any; p2: number; t3?: any; p3?: number }) {
     const chart = chartRef.current;
     const series = candleSeriesRef.current;
     if (!chart || !series) return null;
@@ -606,6 +607,19 @@ export default function EdgeLightweightChart({
             const baseX=Math.max(c.x1,c.x2)+12;
             const scale=Math.max(.2,Math.min(2,Math.abs(c.y2-c.y1)/Math.max(1,Math.max(...rows.map(r=>r.high),item.p1)-Math.min(...rows.map(r=>r.low),item.p2))));
             return <g key={item.id} data-drawing-id={item.id}>{rows.map((row,i)=>{const x=baseX+i*7;const yH=candleSeriesRef.current?.priceToCoordinate(item.p2+(row.high-item.p1)*scale);const yL=candleSeriesRef.current?.priceToCoordinate(item.p2+(row.low-item.p1)*scale);const yO=candleSeriesRef.current?.priceToCoordinate(item.p2+(row.open-item.p1)*scale);const yC=candleSeriesRef.current?.priceToCoordinate(item.p2+(row.close-item.p1)*scale);if([yH,yL,yO,yC].some(v=>v==null))return null;const col=row.close>=row.open?"#089981":"#f23645";return <g key={i} opacity={item.tool==="ghost-feed"?.35:.8}><line x1={x+3} x2={x+3} y1={yH!} y2={yL!} stroke={col}/><rect x={x} y={Math.min(yO!,yC!)} width="6" height={Math.max(1,Math.abs(yC!-yO!))} fill={col}/></g>;})}<rect x={Math.min(c.x1,c.x2)} y={0} width={Math.max(18,Math.abs(c.x2-c.x1))} height={height} fill="transparent" stroke="transparent" data-drawing-id={item.id}/></g>;
+          }
+          if (item.tool === "brush" || item.tool === "highlighter") {
+            const pts = (item.points || [{time:item.t1,price:item.p1},{time:item.t2,price:item.p2}]).map(pt => { const x=chartRef.current?.timeScale().timeToCoordinate(pt.time); const y=candleSeriesRef.current?.priceToCoordinate(pt.price); return x==null||y==null?null:`${x},${y}`; }).filter(Boolean).join(" ");
+            return <g key={item.id} data-drawing-id={item.id}><polyline points={pts} fill="none" stroke={item.tool === "highlighter" ? "#facc15" : "#e5e7eb"} strokeWidth={item.tool === "highlighter" ? 12 : 3} strokeLinecap="round" strokeLinejoin="round" opacity={item.tool === "highlighter" ? .35 : 1} data-drawing-id={item.id} style={{pointerEvents:"stroke",cursor:item.locked?"not-allowed":"move"}}/></g>;
+          }
+          if (["rectangle","rotated-rectangle","circle","ellipse","triangle","arrow","arrow-marker","arrow-up","arrow-down","path","polyline","arc","curve","double-curve"].includes(item.tool)) {
+            const x=Math.min(c.x1,c.x2), y=Math.min(c.y1,c.y2), w=Math.max(4,Math.abs(c.x2-c.x1)), h=Math.max(4,Math.abs(c.y2-c.y1));
+            const stroke=selected?"#60a5fa":"#e5e7eb";
+            if(item.tool==="rectangle" || item.tool==="rotated-rectangle") return <g key={item.id} data-drawing-id={item.id}><rect x={x} y={y} width={w} height={h} transform={item.tool==="rotated-rectangle"?`rotate(-20 ${x+w/2} ${y+h/2})`:undefined} fill="#60a5fa" fillOpacity=".08" stroke={stroke} strokeWidth="2" data-drawing-id={item.id}/></g>;
+            if(item.tool==="circle" || item.tool==="ellipse") return <g key={item.id} data-drawing-id={item.id}><ellipse cx={(c.x1+c.x2)/2} cy={(c.y1+c.y2)/2} rx={item.tool==="circle"?Math.max(4,Math.min(w,h)/2):w/2} ry={item.tool==="circle"?Math.max(4,Math.min(w,h)/2):h/2} fill="#60a5fa" fillOpacity=".08" stroke={stroke} strokeWidth="2" data-drawing-id={item.id}/></g>;
+            if(item.tool==="triangle") return <polygon key={item.id} points={`${c.x1},${c.y2} ${(c.x1+c.x2)/2},${c.y1} ${c.x2},${c.y2}`} fill="#60a5fa" fillOpacity=".08" stroke={stroke} strokeWidth="2" data-drawing-id={item.id}/>;
+            if(item.tool.startsWith("arrow")) return <g key={item.id} data-drawing-id={item.id}><line x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2} stroke={stroke} strokeWidth="2.5" markerEnd="url(#edge-arrow-head)" data-drawing-id={item.id}/></g>;
+            return <g key={item.id} data-drawing-id={item.id}><polyline points={`${c.x1},${c.y1} ${(c.x1+c.x2)/2},${c.y1} ${c.x2},${c.y2}`} fill="none" stroke={stroke} strokeWidth="2" data-drawing-id={item.id}/></g>;
           }
           if (item.tool === "label") return <g key={item.id} data-drawing-id={item.id} style={{ pointerEvents: "all", cursor: item.locked ? "not-allowed" : "move" }}><rect x={c.x1} y={c.y1 - 24} width={Math.max(70, (item.text || "Label").length * 8 + 18)} height={28} rx={5} fill="#202833" stroke={selected ? "#60a5fa" : "#f4bd45"} data-drawing-id={item.id}/><text x={c.x1 + 9} y={c.y1 - 5} fill="#fff" fontSize="13" data-drawing-id={item.id}>{item.text}</text></g>;
           if (item.tool === "fib" || item.tool === "fib-extension") {
