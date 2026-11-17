@@ -2937,3 +2937,30 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
 .edge-drawing-rail{gap:5px}
 .edge-drawing-toolbar-divider{width:32px;height:1px;margin:8px 0;background:#343a45;flex:0 0 1px}
 @media(max-width:600px){.edge-drawing-rail button{width:42px;height:48px;min-height:48px}.edge-drawing-rail button svg{width:32px;height:32px}}
+
+/* Compact TradingView-style drawing rail: all tools remain reachable on short screens. */
+.edge-drawing-toolbar{width:42px!important;flex:0 0 42px!important;padding:4px 2px!important;align-self:stretch;min-height:0;}
+.edge-drawing-rail{width:36px!important;flex:0 0 36px!important;gap:2px!important;max-height:100%;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;overscroll-behavior:contain;}
+.edge-drawing-rail button{box-sizing:border-box;width:34px!important;height:35px!important;min-height:35px!important;flex:0 0 35px;border-radius:7px!important;padding:4px!important;}
+.edge-drawing-rail button svg{width:23px!important;height:23px!important;stroke-width:2!important;}
+.edge-drawing-toolbar-divider{width:24px!important;margin:4px 0!important;flex:0 0 1px!important;}
+@media(max-width:700px){
+ .edge-drawing-toolbar{width:38px!important;flex:0 0 38px!important;padding:3px 1px!important;}
+ .edge-drawing-rail{width:35px!important;flex:0 0 35px!important;}
+ .edge-drawing-rail button{width:33px!important;height:33px!important;min-height:33px!important;flex-basis:33px!important;padding:4px!important;}
+ .edge-drawing-rail button svg{width:22px!important;height:22px!important;}
+ .edge-drawing-toolbar-divider{margin:3px 0!important;}
+}
+
+/* Compact drawing-tool rail: keep every control accessible on short charts. */
+.edge-drawing-toolbar{width:40px!important;flex-basis:40px!important;padding:4px 2px!important;align-self:stretch;min-height:0}
+.edge-drawing-rail{width:36px!important;flex-basis:36px!important;gap:2px!important;max-height:min(72vh,600px);overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#434956 transparent;overscroll-behavior:contain}
+.edge-drawing-rail button{box-sizing:border-box;width:32px!important;height:34px!important;min-height:34px!important;flex:0 0 34px;border-radius:7px!important;padding:4px!important;font-size:17px!important}
+.edge-drawing-rail button svg{width:23px!important;height:23px!important;stroke-width:2!important}
+.edge-drawing-toolbar-divider{width:25px!important;margin:4px 0!important;flex:0 0 1px!important}
+@media(max-width:600px){
+ .edge-drawing-toolbar{width:38px!important;flex-basis:38px!important;padding:3px 1px!important}
+ .edge-drawing-rail{width:36px!important;flex-basis:36px!important;max-height:min(65vh,510px)}
+ .edge-drawing-rail button{width:32px!important;height:33px!important;min-height:33px!important;flex-basis:33px!important}
+ .edge-drawing-rail button svg{width:22px!important;height:22px!important}
+}
