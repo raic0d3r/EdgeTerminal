@@ -2693,103 +2693,36 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
   .edge-tv-inline-group select { min-height: 38px !important; height: 38px !important; }
 }
 
-/* Final chart viewport sizing: reserve real height for the candle canvas, not only its outer card. */
-#trading-chart-section .edge-chart-canvas-wrap {
-  display: flex !important;
-  align-items: stretch !important;
-  width: 100% !important;
-  height: clamp(620px, 78vh, 900px) !important;
+/* EdgeTerminal chart height override — keep the chart canvas tall and prevent flex shrink. */
+#trading-chart-section .chart-frame {
+  min-height: 680px !important;
+}
+#trading-chart-section .chart-layout-count-1 .chart-embed,
+#trading-chart-section .chart-embed {
+  height: 620px !important;
   min-height: 620px !important;
-  flex: 0 0 auto !important;
-  overflow: hidden !important;
+  flex: 0 0 620px !important;
 }
-#trading-chart-section .edge-chart-plot-stack {
-  display: flex !important;
-  flex-direction: column !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  height: 100% !important;
-  flex: 1 1 auto !important;
-  overflow: hidden !important;
-}
-#trading-chart-section .edge-tv-chart-shell {
-  display: flex !important;
-  flex-direction: column !important;
-  width: 100% !important;
-  height: 100% !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  flex: 1 1 auto !important;
-  overflow: hidden !important;
-}
-#trading-chart-section .edge-tv-chart-toolbar,
-#trading-chart-section .edge-tv-ohlc {
-  flex: 0 0 auto !important;
-}
-#trading-chart-section .edge-tv-chart-stage {
-  position: relative !important;
-  width: 100% !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  height: auto !important;
-  flex: 1 1 auto !important;
-  overflow: hidden !important;
-}
-#trading-chart-section .edge-tv-chart-stage .edge-tv-chart-host {
-  position: absolute !important;
-  inset: 0 !important;
-  width: 100% !important;
+#trading-chart-section .tradingview-chart-host,
+#trading-chart-section .tradingview-widget-container {
   height: 100% !important;
   min-height: 0 !important;
 }
-
-@media (min-width: 761px) {
-  #trading-chart-section .edge-tv-chart-toolbar {
-    min-height: 58px !important;
-    flex-wrap: wrap !important;
-    overflow: visible !important;
+@media (min-width: 1440px) {
+  #trading-chart-section .chart-layout-count-1 .chart-embed,
+  #trading-chart-section .chart-embed {
+    height: 700px !important;
+    min-height: 700px !important;
+    flex-basis: 700px !important;
   }
+  #trading-chart-section .chart-frame { min-height: 760px !important; }
 }
-
-/* Phone: compact single-row toolbar; horizontal swipe when controls exceed screen width. */
 @media (max-width: 760px) {
-  #trading-chart-section .edge-chart-canvas-wrap {
-    height: clamp(560px, 76svh, 760px) !important;
-    min-height: 560px !important;
+  #trading-chart-section .chart-frame { min-height: 600px !important; }
+  #trading-chart-section .chart-layout-count-1 .chart-embed,
+  #trading-chart-section .chart-embed {
+    height: 540px !important;
+    min-height: 540px !important;
+    flex-basis: 540px !important;
   }
-  #trading-chart-section .edge-tv-chart-toolbar {
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 5px !important;
-    width: 100% !important;
-    min-height: 46px !important;
-    height: 46px !important;
-    padding: 4px 6px !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    white-space: nowrap !important;
-    scrollbar-width: thin !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-  #trading-chart-section .edge-tv-symbol { flex: 0 0 auto !important; min-width: max-content !important; gap: 4px !important; }
-  #trading-chart-section .edge-tv-symbol strong { font-size: 11px !important; }
-  #trading-chart-section .edge-tv-symbol button { font-size: 14px !important; padding: 2px 4px !important; }
-  #trading-chart-section .edge-tv-timeframes { min-height: 32px !important; height: 32px !important; padding: 0 7px !important; gap: 5px !important; font-size: 11px !important; }
-  #trading-chart-section .edge-tv-chart-types { display: flex !important; flex: 0 0 auto !important; gap: 2px !important; }
-  #trading-chart-section .edge-tv-chart-types button { width: 30px !important; min-width: 30px !important; height: 32px !important; padding: 2px !important; font-size: 13px !important; }
-  #trading-chart-section .edge-tv-indicator-menu-trigger { min-height: 32px !important; height: 32px !important; padding: 0 8px !important; gap: 5px !important; font-size: 10px !important; white-space: nowrap !important; }
-  #trading-chart-section .edge-tv-inline-group { display: flex !important; flex-wrap: nowrap !important; flex: 0 0 auto !important; gap: 3px !important; padding: 0 2px !important; white-space: nowrap !important; }
-  #trading-chart-section .edge-tv-inline-group button,
-  #trading-chart-section .edge-tv-inline-group select { min-width: 30px !important; width: auto !important; min-height: 32px !important; height: 32px !important; padding: 0 7px !important; font-size: 10px !important; white-space: nowrap !important; }
-  #trading-chart-section .edge-tv-toolbar-spacer { display: none !important; }
-  #trading-chart-section .edge-tv-pine-button { min-height: 32px !important; height: 32px !important; padding: 0 8px !important; font-size: 10px !important; white-space: nowrap !important; }
-  #trading-chart-section .edge-tv-feed-badge { min-height: 28px !important; height: 28px !important; padding: 3px 7px !important; font-size: 9px !important; white-space: nowrap !important; }
-  #trading-chart-section .edge-tv-ohlc { min-height: 42px !important; height: auto !important; padding: 5px 8px !important; gap: 4px !important; flex-wrap: wrap !important; white-space: normal !important; overflow: hidden !important; font-size: 10px !important; line-height: 1.3 !important; }
-  #trading-chart-section .edge-tv-ohlc b { display: block !important; flex: 1 1 100% !important; margin-left: 13px !important; font-size: 10px !important; overflow-wrap: anywhere !important; }
-  #trading-chart-section .edge-tv-chart-stage { min-height: 0 !important; height: auto !important; flex: 1 1 auto !important; }
-  #trading-chart-section .edge-tv-chart-stage .edge-tv-chart-host { min-height: 0 !important; height: 100% !important; }
-  #trading-chart-section .edge-drawing-toolbar { width: 32px !important; flex: 0 0 32px !important; gap: 5px !important; padding: 5px 2px !important; }
-  #trading-chart-section .edge-drawing-toolbar button { width: 27px !important; min-height: 34px !important; height: 34px !important; font-size: 16px !important; }
 }
