@@ -478,23 +478,51 @@ export default function EdgeLightweightChart({
           const selected = selectedDrawing === item.id;
           const common = { "data-drawing-id": String(item.id), stroke: selected ? "#60a5fa" : "#f4bd45", strokeWidth: selected ? 3 : 2, style: { pointerEvents: "stroke" as const, cursor: item.locked ? "not-allowed" : "move" } };
           if (["long-position", "short-position", "position-forecast", "price-range", "date-range", "date-price-range"].includes(item.tool)) {
-            const top = Math.min(c.y1, c.y2), bottom = Math.max(c.y1, c.y2);
             const left = Math.min(c.x1, c.x2), right = Math.max(c.x1, c.x2);
             const bullish = item.tool === "long-position";
-            const color = bullish ? "#089981" : item.tool === "short-position" ? "#f23645" : "#60a5fa";
+            const bearish = item.tool === "short-position";
+            const isPosition = bullish || bearish;
+            const color = bullish ? "#089981" : bearish ? "#f23645" : "#60a5fa";
             const entry = item.p1, target = item.p2;
-            const change = target - entry;
+            const directionTarget = bullish ? Math.max(entry, target) : bearish ? Math.min(entry, target) : target;
+            const stop = isPosition ? (entry - (directionTarget - entry) * 0.5) : entry;
+            const targetY = isPosition ? candleSeriesRef.current?.priceToCoordinate(directionTarget) : c.y2;
+            const stopY = isPosition ? candleSeriesRef.current?.priceToCoordinate(stop) : c.y2;
+            const entryY = c.y1;
+            const targetTop = Math.min(entryY, targetY ?? c.y2), targetBottom = Math.max(entryY, targetY ?? c.y2);
+            const stopTop = Math.min(entryY, stopY ?? c.y2), stopBottom = Math.max(entryY, stopY ?? c.y2);
+            const top = Math.min(targetTop, stopTop), bottom = Math.max(targetBottom, stopBottom);
+            const change = directionTarget - entry;
             const pct = entry ? (change / entry) * 100 : 0;
-            const label = item.tool === "long-position" ? `LONG · ${Math.abs(pct).toFixed(2)}%` :
-              item.tool === "short-position" ? `SHORT · ${Math.abs(pct).toFixed(2)}%` :
+            const distance = Math.abs(change);
+            const label = bullish || bearish ? `${bullish ? "Target" : "Target"}: ${distance.toFixed(digits)} (${Math.abs(pct).toFixed(3)}%)` :
               item.tool === "position-forecast" ? "POSITION FORECAST" :
               item.tool === "price-range" ? `${change >= 0 ? "+" : ""}${change.toFixed(digits)} (${pct.toFixed(2)}%)` :
               item.tool === "date-range" ? `${Math.max(1, Math.round(Math.abs(Number(c.x2)-Number(c.x1)) / 8))} bars` : `${change.toFixed(digits)} · ${Math.abs(right-left).toFixed(0)}px`;
+            const centerY = (entryY + (targetY ?? c.y2)) / 2;
             return <g key={item.id} data-drawing-id={item.id} style={{ pointerEvents: "all", cursor: item.locked ? "not-allowed" : "move" }}>
-              <rect x={left} y={top} width={Math.max(18,right-left)} height={Math.max(18,bottom-top)} fill={color} fillOpacity={item.tool.includes("position") ? .16 : .08} stroke={selected ? "#60a5fa" : color} strokeWidth="1.5" strokeDasharray={item.tool.includes("range") ? "4 3" : undefined} data-drawing-id={item.id}/>
-              {item.tool.includes("position") && <><line x1={left} x2={right} y1={c.y1} y2={c.y1} stroke={color} strokeWidth="2" data-drawing-id={item.id}/><line x1={left} x2={right} y1={c.y2} y2={c.y2} stroke={color} strokeWidth="2" data-drawing-id={item.id}/></>}
-              <text x={left+6} y={Math.max(14,top+16)} fill={color} fontSize="12" fontWeight="600" data-drawing-id={item.id}>{label}</text>
-              <rect x={left-8} y={top-8} width={Math.max(34,right-left+16)} height={Math.max(34,bottom-top+16)} fill="transparent" stroke="transparent" data-drawing-id={item.id}/>
+              {isPosition ? <>
+                {/* Long: profit zone above entry, stop zone below. Short: inverse. */}
+                <rect x={left} y={targetTop} width={Math.max(24,right-left)} height={Math.max(2,targetBottom-targetTop)} fill="#089981" fillOpacity=".22" stroke="#089981" strokeWidth="1" data-drawing-id={item.id}/>
+                <rect x={left} y={stopTop} width={Math.max(24,right-left)} height={Math.max(2,stopBottom-stopTop)} fill="#f23645" fillOpacity=".20" stroke="#f23645" strokeWidth="1" data-drawing-id={item.id}/>
+                <line x1={left} x2={right} y1={entryY} y2={entryY} stroke="#8b95a5" strokeWidth="1.5" data-drawing-id={item.id}/>
+                <line x1={left} x2={right} y1={targetY ?? c.y2} y2={targetY ?? c.y2} stroke="#089981" strokeWidth="1.5" data-drawing-id={item.id}/>
+                <line x1={left} x2={right} y1={stopY ?? c.y2} y2={stopY ?? c.y2} stroke="#f23645" strokeWidth="1.5" data-drawing-id={item.id}/>
+                <rect x={left-7} y={targetTop-7} width="14" height="14" rx="4" fill="#dce7ff" stroke="#2563eb" strokeWidth="2" data-drawing-id={item.id}/>
+                <rect x={right-7} y={entryY-7} width="14" height="14" rx="4" fill="#dce7ff" stroke="#2563eb" strokeWidth="2" data-drawing-id={item.id}/>
+                <rect x={left-7} y={stopBottom-7} width="14" height="14" rx="4" fill="#dce7ff" stroke="#2563eb" strokeWidth="2" data-drawing-id={item.id}/>
+                <rect x={left+6} y={Math.max(18,targetTop-34)} width={Math.max(190,right-left-12)} height="28" rx="7" fill="#089981" data-drawing-id={item.id}/>
+                <text x={left+14} y={Math.max(37,targetTop-15)} fill="#fff" fontSize="13" fontWeight="600" data-drawing-id={item.id}>Target: {distance.toFixed(digits)} ({Math.abs(pct).toFixed(3)}%)</text>
+                <rect x={left+6} y={Math.min(height-30,stopBottom+8)} width={Math.max(170,right-left-12)} height="28" rx="7" fill="#f23645" data-drawing-id={item.id}/>
+                <text x={left+14} y={Math.min(height-11,stopBottom+27)} fill="#fff" fontSize="13" fontWeight="600" data-drawing-id={item.id}>Stop: {distance.toFixed(digits)} ({Math.abs(pct).toFixed(3)}%)</text>
+                <rect x={(left+right)/2-118} y={centerY-25} width="236" height="50" rx="9" fill="#089981" stroke="#fff" strokeWidth="1.5" data-drawing-id={item.id}/>
+                <text x={(left+right)/2} y={centerY-3} fill="#fff" fontSize="14" fontWeight="600" textAnchor="middle" data-drawing-id={item.id}>{bullish ? "Long" : "Short"} position</text>
+                <text x={(left+right)/2} y={centerY+16} fill="#fff" fontSize="13" textAnchor="middle" data-drawing-id={item.id}>Risk/reward ratio: 2.00</text>
+              </> : <>
+                <rect x={left} y={Math.min(c.y1,c.y2)} width={Math.max(18,right-left)} height={Math.max(18,Math.abs(c.y2-c.y1))} fill={color} fillOpacity=".10" stroke={selected ? "#60a5fa" : color} strokeWidth="1.5" strokeDasharray={item.tool.includes("range") ? "4 3" : undefined} data-drawing-id={item.id}/>
+                <text x={left+6} y={Math.max(14,top+16)} fill={color} fontSize="12" fontWeight="600" data-drawing-id={item.id}>{label}</text>
+              </>}
+              <rect x={left-10} y={top-10} width={Math.max(44,right-left+20)} height={Math.max(44,bottom-top+20)} fill="transparent" stroke="transparent" data-drawing-id={item.id}/>
             </g>;
           }
           if (item.tool === "sector") {
