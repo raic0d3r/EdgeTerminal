@@ -110,20 +110,28 @@ export default function EdgeLightweightChart({
   }
 
   function startDrawing(event: React.PointerEvent<SVGSVGElement>) {
-    const point = drawingPoint(event);
-    if (!point) return;
     if (drawingTool === "cursor") {
-      const target = event.target as SVGElement;
-      const id = Number(target.getAttribute("data-drawing-id"));
-      if (!Number.isFinite(id)) { setSelectedDrawing(null); return; }
+      // Resolve the nearest drawing element: SVG clicks can land on nested text,
+      // groups, or transparent hit areas rather than the visible line itself.
+      const target = event.target as Element;
+      const hit = target.closest?.("[data-drawing-id]") as SVGElement | null;
+      const rawId = hit?.getAttribute("data-drawing-id");
+      const id = rawId == null ? NaN : Number(rawId);
+      if (!Number.isFinite(id)) { setSelectedDrawing(null); dragDrawingRef.current = null; return; }
       const item = drawings.find(d => d.id === id);
       if (!item) return;
       setSelectedDrawing(id);
       if (item.locked) return;
-      event.currentTarget.setPointerCapture(event.pointerId);
+      const point = drawingPoint(event);
+      if (!point) return;
+      event.preventDefault();
+      event.stopPropagation();
+      try { event.currentTarget.setPointerCapture(event.pointerId); } catch {}
       dragDrawingRef.current = { id, startX: event.clientX, startY: event.clientY, original: { ...item, point } };
       return;
     }
+    const point = drawingPoint(event);
+    if (!point) return;
     if (drawingTool === "label") {
       const text = window.prompt("Enter chart label:", "Label");
       if (text?.trim()) setDrawings(current => [...current, { id: Date.now() + current.length, tool: "label", t1: point.time, p1: point.price, t2: point.time, p2: point.price, text: text.trim() }]);
@@ -394,7 +402,7 @@ export default function EdgeLightweightChart({
           return <div key={zone.id} className={`edge-fvg-zone ${zone.direction}`} style={{ left, top: Math.min(top, bottom), width: Math.max(3, right - left), height: Math.max(2, Math.abs(bottom - top)) }}><span>{zone.label}</span></div>;
         })}
       </div>}
-      <svg data-draw-version={drawVersion} className={`edge-tv-drawing-overlay ${drawingMode ? "drawing-active" : ""}`} style={{ width: chartRef.current?.timeScale().width() ?? 0, height: hostRef.current ? hostRef.current.clientHeight - (chartRef.current?.timeScale().height() ?? 0) : 0 }} onPointerDown={startDrawing} onPointerMove={moveDrawing} onPointerUp={finishDrawing} onPointerCancel={() => { setDraft(null); setFibStep(0); dragDrawingRef.current = null; }} aria-label="Chart drawing surface">
+      <svg data-draw-version={drawVersion} className={`edge-tv-drawing-overlay ${drawingMode ? "drawing-active" : "cursor-active"}`} style={{ width: chartRef.current?.timeScale().width() ?? 0, height: hostRef.current ? hostRef.current.clientHeight - (chartRef.current?.timeScale().height() ?? 0) : 0 }} onPointerDown={startDrawing} onPointerMove={moveDrawing} onPointerUp={finishDrawing} onPointerCancel={() => { setDraft(null); setFibStep(0); dragDrawingRef.current = null; }} aria-label="Chart drawing surface">
         {[...drawings, ...(draft ? [{ ...draft, id: -1 }] : [])].map(item => {
           const c = drawingCoordinates(item);
           if (!c) return null;
