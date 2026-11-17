@@ -411,12 +411,13 @@ export default function EdgeLightweightChart({
             const right = item.tool === "fib" ? Math.max(c.x1, c.x2) : width;
             return <g key={item.id} data-drawing-id={item.id} style={{ pointerEvents: "stroke", cursor: item.locked ? "not-allowed" : "move" }}>
               {ratios.map(r => { const price = base + span * r; const y = candleSeriesRef.current?.priceToCoordinate(price); if (y == null) return null; return <g key={r}><line x1={left} x2={right} y1={y} y2={y} stroke={selected ? "#60a5fa" : "#d6a94b"} strokeWidth={selected ? 2.5 : 1.4} strokeDasharray="5 3" data-drawing-id={item.id}/><text x={Math.min(right - 48, left + 5)} y={y - 4} fill={selected ? "#93c5fd" : "#e6c36d"} fontSize="10" data-drawing-id={item.id}>{(r * 100).toFixed(r === 1.618 || r === 2.618 ? 1 : 1)}% · {price.toFixed(digits)}</text></g>; })}
-              <line x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2} stroke="transparent" strokeWidth="14" data-drawing-id={item.id}/>
+              <rect x={Math.max(0, Math.min(left, right))} y={0} width={Math.max(24, Math.abs(right - left))} height={height} fill="transparent" stroke="transparent" data-drawing-id={item.id} style={{ pointerEvents: "all", cursor: item.locked ? "not-allowed" : "move" }}/>
+              <line x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2} stroke="transparent" strokeWidth="18" data-drawing-id={item.id} style={{ pointerEvents: "stroke" }}/>
               {item.tool === "fib-extension" && c.x3 != null && c.y3 != null && <line x1={c.x2} y1={c.y2} x2={c.x3} y2={c.y3} stroke="transparent" strokeWidth="14" data-drawing-id={item.id}/>}
             </g>;
           }
-          if (item.tool === "horizontal") return <line key={item.id} x1={0} x2={width} y1={c.y1} y2={c.y1} {...common} strokeDasharray="7 4" />;
-          if (item.tool === "vertical") return <line key={item.id} x1={c.x1} x2={c.x1} y1={0} y2={height} {...common} strokeDasharray="6 4" />;
+          if (item.tool === "horizontal") return <g key={item.id}><line x1={0} x2={width} y1={c.y1} y2={c.y1} {...common} strokeDasharray="7 4" /><line x1={0} x2={width} y1={c.y1} y2={c.y1} stroke="transparent" strokeWidth="18" data-drawing-id={item.id} style={{ pointerEvents: "stroke", cursor: item.locked ? "not-allowed" : "move" }}/></g>;
+          if (item.tool === "vertical") return <g key={item.id}><line x1={c.x1} x2={c.x1} y1={0} y2={height} {...common} strokeDasharray="6 4" /><line x1={c.x1} x2={c.x1} y1={0} y2={height} stroke="transparent" strokeWidth="18" data-drawing-id={item.id} style={{ pointerEvents: "stroke", cursor: item.locked ? "not-allowed" : "move" }}/></g>;
           return <g key={item.id}><line x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2} {...common} /><line x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2} stroke="transparent" strokeWidth="14" data-drawing-id={item.id} style={{ pointerEvents: "stroke", cursor: item.locked ? "not-allowed" : "move" }} /></g>;
         })}
       </svg>
