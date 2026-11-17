@@ -251,6 +251,25 @@ function Dashboard() {
   const [toolsVisible, setToolsVisible] = useState(false);
   const [chartDisplayMode, setChartDisplayMode] = useState<"tradingview" | "edge" | "both">("tradingview");
   const [chartFullscreen, setChartFullscreen] = useState(false);
+  useEffect(() => {
+    if (!chartFullscreen) return;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousBodyTouchAction = document.body.style.touchAction;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setChartFullscreen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+      document.body.style.touchAction = previousBodyTouchAction;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [chartFullscreen]);
   const [chartLayoutCount, setChartLayoutCount] = useState(1);
   const [chartLayoutOpen, setChartLayoutOpen] = useState(false);
   const [orderFlowOpen, setOrderFlowOpen] = useState(false);
