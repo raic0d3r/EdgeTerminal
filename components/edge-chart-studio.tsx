@@ -117,6 +117,7 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
   const [replaySpeed, setReplaySpeed] = useState(1);
   const [dragging, setDragging] = useState(false);
   const [drawingTool, setDrawingTool] = useState<"cursor" | "trend" | "horizontal" | "vertical" | "label" | "fib" | "fib-extension">("cursor");
+  const [drawingCategory, setDrawingCategory] = useState<string | null>(null);
   const [clearDrawingsVersion, setClearDrawingsVersion] = useState(0);
   const dragRef = useRef<{ x: number; end: number | null } | null>(null);
 
@@ -237,17 +238,33 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
     <div className="edge-chart-status"><span className={quoteMode === "live" ? "edge-live-dot" : "edge-stale-dot"}/> {status} · {quoteMode === "live" ? "Live broker quote · 5s refresh" : "Broker last close · waiting for live quote"}{lastUpdate ? ` · ${new Date(lastUpdate).toLocaleTimeString()}` : ""}</div>
     {candles.length > 0 ? <div className="edge-chart-canvas-wrap">
       {toolsVisible && <aside className="edge-drawing-toolbar" aria-label="Chart drawing tools">
-        <button type="button" title="Cursor / pan" aria-label="Cursor / pan" className={drawingTool === "cursor" ? "selected" : ""} onClick={() => setDrawingTool("cursor")}>↖</button>
-        <button type="button" title="Trend line" aria-label="Trend line" className={drawingTool === "trend" ? "selected" : ""} onClick={() => setDrawingTool("trend")}>／</button>
-        <button type="button" title="Horizontal line" aria-label="Horizontal line" className={drawingTool === "horizontal" ? "selected" : ""} onClick={() => setDrawingTool("horizontal")}>━</button>
-        <button type="button" title="Vertical line" aria-label="Vertical line" className={drawingTool === "vertical" ? "selected" : ""} onClick={() => setDrawingTool("vertical")}>┃</button>
-        <button type="button" title="Add text label" aria-label="Add text label" className={drawingTool === "label" ? "selected" : ""} onClick={() => setDrawingTool("label")}>T</button>
-        <button type="button" title="Fib retracement" aria-label="Fib retracement" className={drawingTool === "fib" ? "selected" : ""} onClick={() => setDrawingTool("fib")}>F</button>
-        <button type="button" title="Trend-based Fib extension" aria-label="Trend-based Fib extension" className={drawingTool === "fib-extension" ? "selected" : ""} onClick={() => setDrawingTool("fib-extension")}>Fₓ</button>
-        <button type="button" title="Clear drawings" aria-label="Clear drawings" onClick={() => setClearDrawingsVersion(v => v + 1)}>⌫</button>
-        <span className="edge-drawing-toolbar-divider" />
-        <button type="button" title="Zoom in" aria-label="Zoom in" onClick={() => setVisibleCount(v => Math.max(25, Math.round(v / 1.25)))}>＋</button>
-        <button type="button" title="Zoom out" aria-label="Zoom out" onClick={() => setVisibleCount(v => Math.min(candles.length || 500, Math.round(v * 1.25)))}>－</button>
+        <div className="edge-drawing-rail">
+          <button type="button" title="Cursor" aria-label="Cursor" className={drawingTool === "cursor" ? "selected" : ""} onClick={() => { setDrawingTool("cursor"); setDrawingCategory(null); }}>⌖</button>
+          <button type="button" title="Lines" aria-label="Lines" className={drawingCategory === "lines" ? "selected" : ""} onClick={() => setDrawingCategory(v => v === "lines" ? null : "lines")}>／</button>
+          <button type="button" title="Fibonacci tools" aria-label="Fibonacci tools" className={drawingCategory === "fib" ? "selected" : ""} onClick={() => setDrawingCategory(v => v === "fib" ? null : "fib")}>F</button>
+          <button type="button" title="Text and notes" aria-label="Text and notes" className={drawingCategory === "text" ? "selected" : ""} onClick={() => { setDrawingTool("label"); setDrawingCategory(null); }}>T</button>
+          <button type="button" title="Measure" aria-label="Measure" onClick={() => setDrawingCategory(v => v === "measure" ? null : "measure")}>⌁</button>
+          <span className="edge-drawing-toolbar-divider" />
+          <button type="button" title="Zoom in" aria-label="Zoom in" onClick={() => setVisibleCount(v => Math.max(25, Math.round(v / 1.25)))}>⊕</button>
+          <button type="button" title="Zoom out" aria-label="Zoom out" onClick={() => setVisibleCount(v => Math.min(candles.length || 500, Math.round(v * 1.25)))}>⊖</button>
+          <span className="edge-drawing-toolbar-divider" />
+          <button type="button" title="Clear drawings" aria-label="Clear drawings" onClick={() => setClearDrawingsVersion(v => v + 1)}>⌫</button>
+        </div>
+        {drawingCategory === "lines" && <div className="edge-drawing-submenu" role="menu" aria-label="Lines">
+          <div className="edge-drawing-submenu-heading">LINES</div>
+          {[
+            ["trend", "Trendline", "／"], ["ray", "Ray", "／"], ["info", "Info line", "／"], ["extended", "Extended line", "／"], ["angle", "Trend angle", "∠"], ["horizontal", "Horizontal line", "—"], ["horizontal-ray", "Horizontal ray", "—"], ["vertical", "Vertical line", "│"], ["crossline", "Crossline", "＋"]
+          ].map(([tool, label, icon]) => {
+            const supported = ["trend", "horizontal", "vertical"].includes(tool);
+            return <button key={tool} type="button" role="menuitem" disabled={!supported} className={drawingTool === tool ? "selected" : ""} title={supported ? label : `${label} — not available yet`} onClick={() => { if (supported) { setDrawingTool(tool as typeof drawingTool); setDrawingCategory(null); } }}><span className="edge-drawing-submenu-icon">{icon}</span><span>{label}</span>{!supported && <small>soon</small>}</button>;
+          })}
+        </div>}
+        {drawingCategory === "fib" && <div className="edge-drawing-submenu" role="menu" aria-label="Fibonacci tools">
+          <div className="edge-drawing-submenu-heading">FIBONACCI</div>
+          <button type="button" role="menuitem" onClick={() => { setDrawingTool("fib"); setDrawingCategory(null); }}><span className="edge-drawing-submenu-icon">F</span>Fib retracement</button>
+          <button type="button" role="menuitem" onClick={() => { setDrawingTool("fib-extension"); setDrawingCategory(null); }}><span className="edge-drawing-submenu-icon">Fₓ</span>Trend-based Fib extension</button>
+        </div>}
+        {drawingCategory === "measure" && <div className="edge-drawing-submenu" role="menu"><div className="edge-drawing-submenu-heading">MEASURE</div><p>Measurement tools are not available yet.</p></div>}
       </aside>}
       <div className="edge-chart-plot-stack">
         <EdgeLightweightChart
