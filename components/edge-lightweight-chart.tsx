@@ -223,7 +223,7 @@ export default function EdgeLightweightChart({
     {loadError && <div className="edge-tv-load-error">{loadError}</div>}
     <div className="edge-tv-chart-stage">
       <div ref={hostRef} className="edge-tv-chart-host" aria-label={`${symbol} ${interval} broker candlestick chart`} />
-      <svg data-draw-version={drawVersion} className={`edge-tv-drawing-overlay ${drawingMode ? "drawing-active" : ""}`} style={{ width: chartRef.current?.timeScale().width() ?? 0, height: hostRef.current ? hostRef.current.clientHeight - (chartRef.current?.timeScale().height() ?? 0) : 0 }} onPointerDown={startDrawing onPointerMove={moveDrawing} onPointerUp={finishDrawing} onPointerCancel={() => setDraft(null)} aria-label="Chart drawing surface">
+      <svg data-draw-version={drawVersion} className={`edge-tv-drawing-overlay ${drawingMode ? "drawing-active" : ""}`} style={{ width: chartRef.current?.timeScale().width() ?? 0, height: hostRef.current ? hostRef.current.clientHeight - (chartRef.current?.timeScale().height() ?? 0) : 0 }} onPointerDown={startDrawing} onPointerMove={moveDrawing} onPointerUp={finishDrawing} onPointerCancel={() => setDraft(null)} aria-label="Chart drawing surface">
         {[...drawings, ...(draft ? [{ ...draft, id: -1 }] : [])].map(item => {
           const c = drawingCoordinates(item);
           if (!c) return null;

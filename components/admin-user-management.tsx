@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getIdToken } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { Search, RefreshCw, ShieldCheck, Users, LockKeyhole, CheckCircle2, XCircle, SlidersHorizontal, Save, Crown, Zap } from "lucide-react";
+import { Search, RefreshCw, ShieldCheck, Users, LockKeyhole, CheckCircle2, XCircle, SlidersHorizontal, Save, Crown, Zap, Monitor } from "lucide-react";
 import { type FeatureRule, defaultFeatureRules } from "@/lib/feature-access";
 
 type Member = {
@@ -19,7 +19,10 @@ export default function AdminUserManagement({ onClose }: { onClose: () => void }
   const [busyUid, setBusyUid] = useState("");
   const [message, setMessage] = useState("");
   const [denied, setDenied] = useState(false);
-  const [tab, setTab] = useState<"users" | "features">("users");
+  const [tab, setTab] = useState<"users" | "features" | "chart">("users");
+  const [chartDisplayMode, setChartDisplayMode] = useState<"tradingview" | "edge" | "both">("tradingview");
+  const [chartSettingsLoading, setChartSettingsLoading] = useState(false);
+  const [chartSettingsSaving, setChartSettingsSaving] = useState(false);
   const [rules, setRules] = useState<FeatureRule[]>(defaultFeatureRules());
   const [rulesLoading, setRulesLoading] = useState(false);
   const [rulesSaving, setRulesSaving] = useState(false);
@@ -81,6 +84,35 @@ export default function AdminUserManagement({ onClose }: { onClose: () => void }
     finally { setRulesLoading(false); }
   }, []);
 
+  const loadChartSettings = useCallback(async () => {
+    setChartSettingsLoading(true); setMessage("");
+    try {
+      const current = auth?.currentUser;
+      if (!current) throw new Error("Please sign in again.");
+      const token = await getIdToken(current, true);
+      const response = await fetch("/api/admin/chart-display", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || `Could not load chart settings (HTTP ${response.status}).`);
+      if (data.mode === "tradingview" || data.mode === "edge" || data.mode === "both") setChartDisplayMode(data.mode);
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Could not load chart display settings."); }
+    finally { setChartSettingsLoading(false); }
+  }, []);
+
+  async function saveChartSettings() {
+    setChartSettingsSaving(true); setMessage("");
+    try {
+      const current = auth?.currentUser;
+      if (!current) throw new Error("Please sign in again.");
+      const token = await getIdToken(current, true);
+      const response = await fetch("/api/admin/chart-display", { method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ mode: chartDisplayMode }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || `Could not save chart settings (HTTP ${response.status}).`);
+      setChartDisplayMode(data.mode); window.dispatchEvent(new Event("edge-terminal-chart-display-updated"));
+      setMessage("Chart display settings saved. They apply to all website visitors after refresh.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Could not save chart display settings."); }
+    finally { setChartSettingsSaving(false); }
+  }
+
   async function saveRules() {
     setRulesSaving(true); setMessage("");
     try {
@@ -111,7 +143,7 @@ export default function AdminUserManagement({ onClose }: { onClose: () => void }
         <div><span className="admin-kicker"><ShieldCheck size={15}/> ADMINISTRATION</span><h2>User Management</h2><p>Manage member roles, account status, and community access.</p></div>
         <button className="admin-close" onClick={onClose}>Close</button>
       </header>
-      <div className="admin-tabs"><button className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}><Users size={15}/> User Management</button><button className={tab === "features" ? "active" : ""} onClick={() => { setTab("features"); if (!rulesLoading) void loadRules(); }}><SlidersHorizontal size={15}/> Feature Access & Pricing</button></div>
+      <div className="admin-tabs"><button className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}><Users size={15}/> User Management</button><button className={tab === "features" ? "active" : ""} onClick={() => { setTab("features"); if (!rulesLoading) void loadRules(); }}><SlidersHorizontal size={15}/> Feature Access & Pricing</button><button className={tab === "chart" ? "active" : ""} onClick={() => { setTab("chart"); if (!chartSettingsLoading) void loadChartSettings(); }}><Monitor size={15}/> Chart Display</button></div>
       {denied && <div className="admin-callout"><LockKeyhole size={19}/><div><b>Admin access is not enabled for this account.</b><p>Add your sign-in email to <code>ADMIN_EMAILS</code> in <code>.env.local</code>, configure Firebase Admin credentials, and restart the server.</p></div></div>}
       {tab === "users" && <><div className="admin-toolbar">
         <div className="admin-count"><Users size={18}/><b>{users.length}</b><span>registered users</span></div>
@@ -149,6 +181,17 @@ export default function AdminUserManagement({ onClose }: { onClose: () => void }
             <label className="feature-enabled-toggle"><input type="checkbox" checked={rule.enabled} onChange={e => changeRule(rule.title, { enabled: e.target.checked })}/> Enabled</label>
           </article>)}</div>
           <div className="feature-access-footer"><span>Settings are saved to Firestore and apply to all users after refresh. Use HTTPS checkout links only.</span><button className="feature-save-button" onClick={() => void saveRules()} disabled={rulesSaving || rulesLoading}><Save size={16}/> {rulesSaving ? "Saving…" : "Save Feature Settings"}</button></div>
+        </>}
+      </section>}
+      {tab === "chart" && <section className="feature-access-admin chart-display-admin">
+        <div className="feature-access-intro"><div><h3><Monitor size={18}/> Website Chart Display</h3><p>Choose which chart experience every visitor sees in the Advanced Trading Chart section. This is a global website setting, saved to Firestore.</p></div><button className="admin-refresh" onClick={() => void loadChartSettings()} disabled={chartSettingsLoading}><RefreshCw size={14}/> Reload</button></div>
+        {chartSettingsLoading ? <div className="admin-empty">Loading chart settings…</div> : <>
+          <div className="chart-display-options" role="radiogroup" aria-label="Chart display mode">
+            <label className={chartDisplayMode === "tradingview" ? "selected" : ""}><input type="radio" name="chart-display-mode" value="tradingview" checked={chartDisplayMode === "tradingview"} onChange={() => setChartDisplayMode("tradingview")}/><span className="chart-display-option-icon">TV</span><span><b>TradingView only</b><small>Show the embedded TradingView chart only.</small></span></label>
+            <label className={chartDisplayMode === "edge" ? "selected" : ""}><input type="radio" name="chart-display-mode" value="edge" checked={chartDisplayMode === "edge"} onChange={() => setChartDisplayMode("edge")}/><span className="chart-display-option-icon">E</span><span><b>Edge Chart only</b><small>Show the native Edge chart using the selected Exness or cTrader feed.</small></span></label>
+            <label className={chartDisplayMode === "both" ? "selected" : ""}><input type="radio" name="chart-display-mode" value="both" checked={chartDisplayMode === "both"} onChange={() => setChartDisplayMode("both")}/><span className="chart-display-option-icon">TV + E</span><span><b>Both charts</b><small>Show TradingView and Edge Chart together.</small></span></label>
+          </div>
+          <div className="feature-access-footer"><span>Changes apply globally after visitors refresh the page. Both mode loads both chart panels and may use more browser resources.</span><button className="feature-save-button" onClick={() => void saveChartSettings()} disabled={chartSettingsSaving}><Save size={16}/> {chartSettingsSaving ? "Saving…" : "Save Chart Display"}</button></div>
         </>}
       </section>}
     </section>
