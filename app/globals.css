@@ -2913,3 +2913,5 @@ button.sidebar-app-card:hover { filter:brightness(1.12); transform:translateY(-1
   .edge-tv-indicator-menu button:hover,
   .edge-tv-indicator-menu button.selected { background: #292f39 !important; color: #ffd05a !important; }
 }
+.edge-drawing-toolbar-divider{display:block;width:22px;height:1px;background:#343a45;margin:4px 0}
+.edge-drawing-toolbar button[aria-label="Zoom in"],.edge-drawing-toolbar button[aria-label="Zoom out"]{font-size:21px;font-weight:600}

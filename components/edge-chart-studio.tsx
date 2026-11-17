@@ -92,7 +92,7 @@ function parsePine(source: string): { plots: PinePlot[]; error: string | null } 
   return { plots, error: null };
 }
 
-export default function EdgeChartStudio({ symbol, interval, provider, onIntervalChange }: { symbol: string; interval: string; provider: "ctrader" | "exness"; onIntervalChange?: (value: string) => void }) {
+export default function EdgeChartStudio({ symbol, interval, provider, onIntervalChange, toolsVisible = false }: { symbol: string; interval: string; provider: "ctrader" | "exness"; onIntervalChange?: (value: string) => void; toolsVisible?: boolean }) {
   const [candles, setCandles] = useState<Candle[]>([]);
   const [livePrice, setLivePrice] = useState<number | null>(null);
   const [quoteMode, setQuoteMode] = useState("waiting");
@@ -110,7 +110,7 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
   const [scriptError, setScriptError] = useState("");
   const [scriptNote, setScriptNote] = useState("");
   const [savedScripts, setSavedScripts] = useState<string[]>([]);
-  const [visibleCount, setVisibleCount] = useState(140);
+  const [visibleCount, setVisibleCount] = useState(2500);
   const [viewEnd, setViewEnd] = useState<number | null>(null);
   const [replayIndex, setReplayIndex] = useState<number | null>(null);
   const [replayPlaying, setReplayPlaying] = useState(false);
@@ -124,7 +124,7 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
     setBusy(true);
     setStatus("Loading broker candles…");
     try {
-      const response = await fetchMarketData(`/api/market?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(API_INTERVAL[interval] || interval)}&provider=${provider}&historyBars=500`);
+      const response = await fetchMarketData(`/api/market?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(API_INTERVAL[interval] || interval)}&provider=${provider}&historyBars=2500`);
       const body = await response.json();
       if (!response.ok || !Array.isArray(body?.data?.candles)) throw new Error(body?.error || "Broker candle history is unavailable.");
       const rawRows = body.data.candles.map((c: Candle) => ({
@@ -203,7 +203,7 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
     return () => window.clearInterval(timer);
   }, [replayPlaying, replayIndex, replaySpeed, candles.length]);
 
-  useEffect(() => { setReplayIndex(null); setReplayPlaying(false); setViewEnd(null); setVisibleCount(140); }, [symbol, interval, provider]);
+  useEffect(() => { setReplayIndex(null); setReplayPlaying(false); setViewEnd(null); setVisibleCount(2500); }, [symbol, interval, provider]);
 
   function beginReplay() {
     const end = viewEnd ?? candles.length;
@@ -236,7 +236,7 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
     {replayIndex !== null && <div className="edge-replay-timeline"><span>REPLAY · {candles[replayIndex]?.time ? new Date(candles[replayIndex].time).toLocaleString() : ""}</span><input aria-label="Replay position" type="range" min="1" max={Math.max(1, candles.length - 1)} value={replayIndex} onChange={e => { setReplayPlaying(false); setReplayIndex(Number(e.target.value)); }} /></div>}
     <div className="edge-chart-status"><span className={quoteMode === "live" ? "edge-live-dot" : "edge-stale-dot"}/> {status} · {quoteMode === "live" ? "Live broker quote · 5s refresh" : "Broker last close · waiting for live quote"}{lastUpdate ? ` · ${new Date(lastUpdate).toLocaleTimeString()}` : ""}</div>
     {candles.length > 0 ? <div className="edge-chart-canvas-wrap">
-      <aside className="edge-drawing-toolbar" aria-label="Chart drawing tools">
+      {toolsVisible && <aside className="edge-drawing-toolbar" aria-label="Chart drawing tools">
         <button type="button" title="Cursor / pan" aria-label="Cursor / pan" className={drawingTool === "cursor" ? "selected" : ""} onClick={() => setDrawingTool("cursor")}>↖</button>
         <button type="button" title="Trend line" aria-label="Trend line" className={drawingTool === "trend" ? "selected" : ""} onClick={() => setDrawingTool("trend")}>／</button>
         <button type="button" title="Horizontal line" aria-label="Horizontal line" className={drawingTool === "horizontal" ? "selected" : ""} onClick={() => setDrawingTool("horizontal")}>━</button>
@@ -245,7 +245,10 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
         <button type="button" title="Fib retracement" aria-label="Fib retracement" className={drawingTool === "fib" ? "selected" : ""} onClick={() => setDrawingTool("fib")}>F</button>
         <button type="button" title="Trend-based Fib extension" aria-label="Trend-based Fib extension" className={drawingTool === "fib-extension" ? "selected" : ""} onClick={() => setDrawingTool("fib-extension")}>Fₓ</button>
         <button type="button" title="Clear drawings" aria-label="Clear drawings" onClick={() => setClearDrawingsVersion(v => v + 1)}>⌫</button>
-      </aside>
+        <span className="edge-drawing-toolbar-divider" />
+        <button type="button" title="Zoom in" aria-label="Zoom in" onClick={() => setVisibleCount(v => Math.max(25, Math.round(v / 1.25)))}>＋</button>
+        <button type="button" title="Zoom out" aria-label="Zoom out" onClick={() => setVisibleCount(v => Math.min(candles.length || 500, Math.round(v * 1.25)))}>－</button>
+      </aside>}
       <div className="edge-chart-plot-stack">
         <EdgeLightweightChart
           symbol={symbol}
@@ -270,9 +273,7 @@ export default function EdgeChartStudio({ symbol, interval, provider, onInterval
               </div>}
             </div>
             <div className="edge-tv-inline-group edge-tv-navigation-controls" aria-label="Chart navigation">
-              <button type="button" onClick={() => setVisibleCount(v => Math.max(25, Math.round(v / 1.25)))}>＋</button>
-              <button type="button" onClick={() => setVisibleCount(v => Math.min(candles.length || 500, Math.round(v * 1.25)))}>－</button>
-              <button type="button" onClick={() => { setViewEnd(null); setReplayIndex(null); setVisibleCount(140); }} title="Reset chart view">↺</button>
+              <button type="button" onClick={() => { setViewEnd(null); setReplayIndex(null); setVisibleCount(2500); }} title="Reset chart view">↺</button>
               <button type="button" className={replayIndex !== null ? "active" : ""} onClick={beginReplay} disabled={candles.length < 3} title="Bar replay">▷</button>
               {replayIndex !== null && <>
                 <button type="button" onClick={() => setReplayPlaying(v => !v)}>{replayPlaying ? "Ⅱ" : "▶"}</button>
