@@ -3,4 +3,4 @@
 
 [build.environment]
   # This is a non-secret feature-mode flag; omit it from secret-value scanning.
-  SECRETS_SCAN_OMIT_KEYS = "ECONOMIC_DATA_MODE"
+  SECRETS_SCAN_OMIT_KEYS = "ECONOMIC_DATA_MODE,ORDERFLOW_DATA_MODE"
