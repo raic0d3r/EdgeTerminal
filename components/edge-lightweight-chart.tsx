@@ -79,6 +79,10 @@ export default function EdgeLightweightChart({
   const hostRef = useRef<HTMLDivElement>(null);
   type Drawing = { id: number; tool: Exclude<DrawTool, "cursor">; points?: Array<{ time: any; price: number }>; t1: any; p1: number; t2: any; p2: number; t3?: any; p3?: number; text?: string; locked?: boolean };
   const [drawings, setDrawings] = useState<Drawing[]>([]);
+  // Keep drawings per instrument, not per timeframe: TradingView-style drawings
+  // remain visible when the user switches intervals or the chart remounts.
+  const drawingsStorageKey = `edge-terminal-chart-drawings:${symbol}`;
+  const drawingsHydratedRef = useRef<string | null>(null);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const undoStackRef = useRef<Drawing[][]>([]);
@@ -123,6 +127,33 @@ export default function EdgeLightweightChart({
   const [loadError, setLoadError] = useState("");
   const digits = symbol === "BTC/USD" ? 1 : 2;
   const drawingMode = drawingTool !== "cursor";
+
+  useEffect(() => {
+    drawingsHydratedRef.current = null;
+    try {
+      const raw = window.localStorage.getItem(drawingsStorageKey);
+      const saved = raw ? JSON.parse(raw) : [];
+      const restored = Array.isArray(saved) ? saved : [];
+      drawingsRef.current = restored;
+      setDrawings(restored);
+    } catch {
+      drawingsRef.current = [];
+      setDrawings([]);
+    }
+    undoStackRef.current = [];
+    redoStackRef.current = [];
+    setCanUndo(false);
+    setCanRedo(false);
+    setSelectedDrawing(null);
+    drawingsHydratedRef.current = symbol;
+  }, [drawingsStorageKey, symbol]);
+
+  useEffect(() => {
+    if (drawingsHydratedRef.current !== symbol) return;
+    try {
+      window.localStorage.setItem(drawingsStorageKey, JSON.stringify(drawings));
+    } catch { /* Storage may be unavailable or full; chart drawing still works in memory. */ }
+  }, [drawings, drawingsStorageKey, symbol]);
 
   useEffect(() => {
     if (drawingsRef.current.length) recordDrawingChange([]);

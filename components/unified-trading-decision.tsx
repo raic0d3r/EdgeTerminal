@@ -5,7 +5,7 @@ import { auth } from "@/lib/firebase";
 import { fetchMarketData } from "@/lib/market-selection";
 import { calculateUnifiedBias } from "@/lib/market-intelligence/unified-bias";
 import { appendUnifiedDecisionSnapshot, evaluateUnifiedDecisionPerformance, mergeValidationPrices, type UnifiedDecisionSnapshot, type ValidationPrice } from "@/lib/market-intelligence/unified-decision-validation";
-import { Activity, AlertTriangle, CheckCircle2, ChevronDown, Clock3, RefreshCw, ShieldAlert } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2, Clock3, RefreshCw, ShieldAlert } from "lucide-react";
 
 type Direction = "BUY" | "SELL" | "WAIT";
 type Trend = "bullish" | "bearish" | "range" | "unclear" | "unavailable";
@@ -72,7 +72,6 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
   const [validationPrices,setValidationPrices] = useState<Record<string,ValidationPrice[]>>({});
   const [performance,setPerformance] = useState<ReturnType<typeof evaluateUnifiedDecisionPerformance>>([]);
   const [refreshKey,setRefreshKey] = useState(0);
-  const [isExpanded,setIsExpanded] = useState(true);
   const mounted = useRef(true);
   const validationStorageKey = "edge-terminal-unified-decision-validation-v1";
   const pricesStorageKey = "edge-terminal-unified-decision-prices-v1";
@@ -230,14 +229,7 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
   const digits = asset === "BTC/USD" ? 2 : asset === "XAU/USD" ? 2 : 3;
   const decision = loading ? "WAIT" : model.decision;
   return <section className="utde-panel" aria-label="Unified Trading Decision Engine">
-    <div className="utde-head">
-      <button type="button" className="utde-collapse-trigger" aria-expanded={isExpanded} aria-controls="utde-content" onClick={()=>setIsExpanded(v=>!v)}>
-        <span><span className="utde-kicker"><Activity size={13}/> EDGE TERMINAL · UNIFIED DECISION</span><h2>Unified Trading Decision Engine</h2><p>{asset} · Selected: {interval} · Context: {higher} · Entry check: {lowerLabel} · {broker.toUpperCase()}</p></span>
-        <ChevronDown size={18} className={`utde-collapse-chevron ${isExpanded ? "expanded" : ""}`} />
-      </button>
-      <div className="utde-head-actions"><button type="button" className="utde-refresh" onClick={()=>setRefreshKey(v=>v+1)} disabled={loading} aria-label="Refresh unified decision"><RefreshCw size={14}/></button><span className={`utde-badge ${decision.toLowerCase()}`}>{loading?"ANALYSING":decision}</span></div>
-    </div>
-    {isExpanded && <div id="utde-content">
+    <div className="utde-head"><div><span className="utde-kicker"><Activity size={13}/> EDGE TERMINAL · UNIFIED DECISION</span><h2>Unified Trading Decision Engine</h2><p>{asset} · Selected: {interval} · Context: {higher} · Entry check: {lowerLabel} · {broker.toUpperCase()}</p></div><div className="utde-head-actions"><button type="button" className="utde-refresh" onClick={()=>setRefreshKey(v=>v+1)} disabled={loading} aria-label="Refresh unified decision"><RefreshCw size={14}/></button><span className={`utde-badge ${decision.toLowerCase()}`}>{loading?"ANALYSING":decision}</span></div></div>
     {error ? <div className="utde-data-note"><AlertTriangle size={14}/>{error} No directional signal is generated without source data.</div> : <>
       <div className="utde-summary"><div><small>FINAL DECISION</small><strong className={decision.toLowerCase()}>{loading?"—":decision}</strong><span>{decision==="WAIT"?"Setup or entry confirmation incomplete":"Selected-timeframe setup and lower-timeframe entry confirmed"}</span></div><div><small>WEIGHTED MARKET BIAS</small><strong>{model.unifiedBias.score==null?"—":`${model.unifiedBias.score}/100`}</strong><span>{model.unifiedBias.bias} · {model.unifiedBias.confidence}% source coverage</span></div><div><small>MODULE ALIGNMENT</small><strong>{model.agreement} / {model.agreement+model.opposition}</strong><span>{model.opposition} directional disagreements · neutral/missing excluded</span></div></div>
       <div className="utde-section-title">MODULE CONTRIBUTIONS · LIVE DATA ONLY</div>
@@ -263,6 +255,5 @@ export default function UnifiedTradingDecision({ asset, interval, broker }: { as
       <div className="utde-data-note"><ShieldAlert size={14}/><span>Data integrity: Unavailable COT, retail, macro and verified aggressor-side order-flow feeds are excluded from the weighted composite. Connected CFTC, retail and FRED readings contribute at their configured weights; available weights are renormalized. Broker tick volume is shown only as a candle-volume proxy. Historical results are measured from the returned broker history and are not a promise of future performance. No automatic execution.</span></div>
     </>}
     <div className="utde-footer">{forecast?`${forecast.data.candles} selected-timeframe candles · ${forecast.data.source} · latest ${forecast.data.latestCandle?new Date(forecast.data.latestCandle).toLocaleString():"unknown"} · Updated ${updated||"—"}. `:""}Refreshed every 60 seconds. BUY/SELL requires the selected-timeframe engine confirmation, lower-timeframe breakout confirmation and an active risk plan. This is analytical decision support, not financial advice.</div>
-    </div>}
   </section>;
 }
