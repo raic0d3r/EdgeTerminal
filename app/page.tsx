@@ -221,6 +221,7 @@ function Dashboard() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [isAllowlistedAdmin, setIsAllowlistedAdmin] = useState(false);
   const [aiAnalystOpen, setAiAnalystOpen] = useState(false);
   const [railPanel, setRailPanel] = useState<"calendar" | "news" | null>(null);
   const [displayName, setDisplayName] = useState("");
@@ -412,10 +413,13 @@ function Dashboard() {
         if (user) headers.Authorization = `Bearer ${await getIdToken(user)}`;
         const response = await fetch("/api/feature-access", { headers, cache: "no-store" });
         if (!response.ok) throw new Error("Could not load feature access settings");
-        const data = await response.json() as { rules?: DashboardFeatureRule[] };
-        if (active) setDashboardFeatureRules(Array.isArray(data.rules) ? data.rules : []);
+        const data = await response.json() as { rules?: DashboardFeatureRule[]; plan?: string };
+        if (active) {
+          setDashboardFeatureRules(Array.isArray(data.rules) ? data.rules : []);
+          setIsAllowlistedAdmin(data.plan === "admin");
+        }
       } catch {
-        if (active) setDashboardFeatureRules([]);
+        if (active) { setDashboardFeatureRules([]); setIsAllowlistedAdmin(false); }
       }
     };
     const unsubscribe = auth ? onAuthStateChanged(auth, user => { void loadFeatureRules(user); }) : () => { void loadFeatureRules(null); };
@@ -527,11 +531,7 @@ function Dashboard() {
           <button onClick={()=>setDocumentationOpen(true)}><BookOpen size={18}/> Documentation</button>
           <button onClick={()=>{setFeatureSuggestionsOpen(true);setActiveChat(null);setWorkspaceEmpty(false);}}><Lightbulb size={18}/> Feature Suggestions</button>
         </nav>}
-{auth?.currentUser?.email &&
-  (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .includes((auth?.currentUser?.email || "").toLowerCase()) && (
+{isAllowlistedAdmin && (
       <button
         className="community-admin-link"
         onClick={() => setAdminOpen(true)}
@@ -572,7 +572,7 @@ function Dashboard() {
         <div className="dm-heading">DIRECT MESSAGES</div>
         <button className={`dm-row ${activeChat?.key === "support" ? "selected" : ""}`} onClick={()=>{setFeatureSuggestionsOpen(false);setWorkspaceEmpty(false);setActiveChat({key:"support",title:"Support",subtitle:"Private support conversation",emoji:"🛟"});}}><span className="dm-avatar support-avatar">S</span><span><b>Support</b><small>Private · visible to you and admins</small></span></button>
         <button className={`dm-row ${activeChat?.key === "private-notes" ? "selected" : ""}`} onClick={()=>{setFeatureSuggestionsOpen(false);setWorkspaceEmpty(false);setActiveChat({key:"private-notes",title:"Private Notes",subtitle:"Personal notes",emoji:"📝"});}}><span className="dm-avatar notes-avatar">{(displayName.trim()[0] || username?.[0] || "U").toUpperCase()}</span><span><b>Message yourself</b><small>Private notes · only you</small></span></button>
-        {auth?.currentUser?.email && (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "").split(",").map(email=>email.trim().toLowerCase()).includes((auth?.currentUser?.email || "").toLowerCase()) && <button className={`dm-row admin-support-row ${activeChat?.key === "support-admin" ? "selected" : ""}`} onClick={()=>{setFeatureSuggestionsOpen(false);setWorkspaceEmpty(false);setActiveChat({key:"support-admin",title:"Support Inbox",subtitle:"Admin-only support tickets",emoji:"🛡️"});}}><span className="dm-avatar admin-avatar">A</span><span><b>Support Inbox</b><small>Admin only · private tickets</small></span></button>}
+        {isAllowlistedAdmin && <button className={`dm-row admin-support-row ${activeChat?.key === "support-admin" ? "selected" : ""}`} onClick={()=>{setFeatureSuggestionsOpen(false);setWorkspaceEmpty(false);setActiveChat({key:"support-admin",title:"Support Inbox",subtitle:"Admin-only support tickets",emoji:"🛡️"});}}><span className="dm-avatar admin-avatar">A</span><span><b>Support Inbox</b><small>Admin only · private tickets</small></span></button>}
       </div>
       <div className="main-sidebar-profile">
         <span className="profile-avatar">{avatarUrl ? <img src={avatarUrl} alt="" /> : (displayName.trim()[0] || "U").toUpperCase()}</span><div className="profile-copy"><b>{displayName || username || "Edge User"}</b><small>@{username || "member"}</small></div>
