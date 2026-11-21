@@ -118,7 +118,7 @@ const faqs = [
   },
   {
     q: "How do I protect my account and data?",
-    a: "Use a strong unique password, sign out on shared devices, and never share login credentials or API keys. Keep Firebase or other server credentials out of screenshots, chat messages, and ZIP uploads. Use only official support channels and report unexpected account access promptly."
+    a: "Use a strong unique password, sign out on shared devices, and never share login credentials or API keys. Keep database or other server credentials out of screenshots, chat messages, and ZIP uploads. Use only official support channels and report unexpected account access promptly."
   },
 ];
 

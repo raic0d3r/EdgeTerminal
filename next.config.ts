@@ -12,7 +12,6 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  output: "standalone",
   allowedDevOrigins: ["192.168.178.24"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

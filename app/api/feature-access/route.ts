@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminServices, isAllowlistedAdmin } from "@/lib/firebase-admin";
+import { getBearerToken, isAllowlistedAdmin, verifyToken } from "@/lib/server/auth";
+import { getSetting } from "@/lib/server/store";
 import { defaultFeatureRules, normalizeFeatureRules } from "@/lib/feature-access";
 
 export const runtime = "nodejs";
@@ -7,23 +8,17 @@ export const runtime = "nodejs";
 export async function GET(request: NextRequest) {
   let rules = defaultFeatureRules();
   let plan: "member" | "vip" | "admin" = "member";
-  const authorization = request.headers.get("authorization") || "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+  const token = getBearerToken(request);
   try {
-    const { adminAuth, adminDb } = getAdminServices();
-    const configDoc = await adminDb.collection("platformSettings").doc("featureAccess").get();
-    if (configDoc.exists) rules = normalizeFeatureRules(configDoc.data()?.rules);
+    const config = await getSetting<{ rules?: unknown }>("featureAccess");
+    if (config?.rules) rules = normalizeFeatureRules(config.rules);
     if (token) {
-      const decoded = await adminAuth.verifyIdToken(token, true);
-      if (isAllowlistedAdmin(decoded.email)) plan = "admin";
-      else {
-        const profile = (await adminDb.collection("users").doc(decoded.uid).get()).data() || {};
-        const role = String(profile.role || profile.plan || "member").toLowerCase();
-        if (role === "vip" || role === "pro") plan = "vip";
-      }
+      const user = await verifyToken(token);
+      if (isAllowlistedAdmin(user.email)) plan = "admin";
+      else if (user.role === "vip") plan = "vip";
     }
   } catch {
-    // The default feature map keeps the app usable without Firebase Admin configured.
+    // The default feature map keeps the app usable if the database is briefly unavailable.
   }
   return NextResponse.json({ rules, plan }, { headers: { "Cache-Control": "no-store" } });
 }

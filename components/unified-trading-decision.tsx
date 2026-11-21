@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/auth-client";
 import { fetchMarketData } from "@/lib/market-selection";
 import { calculateUnifiedBias } from "@/lib/market-intelligence/unified-bias";
 import { appendUnifiedDecisionSnapshot, evaluateUnifiedDecisionPerformance, mergeValidationPrices, type UnifiedDecisionSnapshot, type ValidationPrice } from "@/lib/market-intelligence/unified-decision-validation";

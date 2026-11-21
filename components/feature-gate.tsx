@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { onAuthStateChanged, getIdToken, type User } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { onAuthStateChanged, getIdToken, type User } from "@/lib/auth-client";
+import { auth } from "@/lib/auth-client";
 import { Crown, X, ExternalLink } from "lucide-react";
 import type { FeatureRule, AccessTier } from "@/lib/feature-access";
 

@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { ArrowLeft, Plus, X, Lightbulb, LoaderCircle } from "lucide-react";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/auth-client";
 
 type Suggestion = { id: string; author: string; title: string; description: string; createdAt: string };
 

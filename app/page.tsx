@@ -29,8 +29,8 @@ import MarketIntelligence from "@/components/market-intelligence";
 import FeatureSuggestions from "@/components/feature-suggestions";
 import PlatformDocumentation from "@/components/platform-documentation";
 import FaqModal from "@/components/faq-modal";
-import { getIdToken, onAuthStateChanged, updateProfile, type User } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { getIdToken, onAuthStateChanged, updateProfile, type User } from "@/lib/auth-client";
+import { auth } from "@/lib/auth-client";
 import {
   Activity, BarChart3, Bell, BookOpen, BrainCircuit, CalendarDays, ChevronDown, LayoutGrid,
   ChevronRight, Clock3, Crown, Gauge, Globe2, Layers3, LockKeyhole, Menu,

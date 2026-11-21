@@ -1,23 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminServices, isAllowlistedAdmin } from "@/lib/firebase-admin";
+import { getBearerToken, isAllowlistedAdmin, verifyToken } from "@/lib/server/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const authorization = request.headers.get("authorization") || "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+  const token = getBearerToken(request);
   if (!token) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   try {
-    const { adminAuth, adminDb } = getAdminServices();
-    const decoded = await adminAuth.verifyIdToken(token, true);
-    const profileSnap = await adminDb.collection("users").doc(decoded.uid).get();
-    const profile = profileSnap.data() || {};
-    const access = (profile.access || {}) as Record<string, unknown>;
-    const role = String(profile.role || profile.plan || "").trim().toLowerCase();
-    const isAdmin = isAllowlistedAdmin(decoded.email);
-    const accountEnabled = String(profile.status || "active").toLowerCase() !== "disabled";
-    const isVip = isAdmin || (accountEnabled && (role === "vip" || access.vipLounge === true || access.importantVip === true));
+    const user = await verifyToken(token);
+    const isAdmin = isAllowlistedAdmin(user.email);
+    const isVip = isAdmin || user.role === "vip" || user.access.vipLounge || user.access.importantVip;
     return NextResponse.json({ isAdmin, isVip, vipLounge: isVip, importantVip: isVip }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Access check failed", error);

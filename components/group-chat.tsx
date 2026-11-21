@@ -2,7 +2,7 @@
 
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Bold, Code2, ImagePlus, Italic, MoreHorizontal, Paperclip, Send, Smile } from "lucide-react";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/auth-client";
 
 type ChatMessage = {
   id: number;

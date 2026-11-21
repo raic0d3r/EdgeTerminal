@@ -8,30 +8,34 @@
     "start": "next start",
     "lint": "eslint",
     "security:audit": "node scripts/security/audit-api-routes.cjs",
-    "test:market-intelligence": "node --test scripts/market-intelligence/*.test.cjs"
+    "test:market-intelligence": "node --test scripts/market-intelligence/*.test.cjs",
+    "db:migrate": "psql \"$DATABASE_URL\" -f db/schema.sql"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
-    "firebase": "^13.1.0",
-    "firebase-admin": "^13.5.0",
     "lucide-react": "^0.468.0",
-    "next": "^16.4.3",
+    "next": "^16.4.6",
+    "pg": "^8.13.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "ws": "^8.22.1",
-    "pg": "^8.16.3"
+    "web-push": "^3.6.7",
+    "ws": "^8.22.1"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.13.4",
+    "@types/pg": "^8.11.10",
     "@types/react": "^19.0.8",
+    "@types/web-push": "^3.6.4",
     "@types/ws": "^8.5.13",
     "eslint": "^10.14.0",
     "eslint-config-next": "^0.2.4",
-    "typescript": "^5.7.3",
-    "@types/pg": "^8.15.5"
+    "typescript": "^5.7.3"
   },
   "engines": {
     "node": "24.x"
+  },
+  "allowScripts": {
+    "better-sqlite3@11.10.0": true
   }
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { buildFootprint, buildVolumeProfile, calculateValueArea, type TradePrint } from "@/lib/orderflow/engine";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/auth-client";
 
 type ReplayTrade = TradePrint & { id: number; source: string };
 type ReplayResponse = { status: string; instrument: string; dataNote?: string; tradeCount?: number; truncated?: boolean; trades?: ReplayTrade[]; error?: string };

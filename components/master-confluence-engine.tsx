@@ -1,7 +1,7 @@
 "use client";
 
 import { marketApiUrl, fetchMarketData } from "@/lib/market-selection";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/auth-client";
 import { useEffect, useMemo, useState } from "react";
 import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BookOpen, CircleHelp, Clock3, Gauge, ShieldAlert, Sparkles } from "lucide-react";
 

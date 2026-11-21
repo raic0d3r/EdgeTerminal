@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCTraderConfig, getFreshCTraderSession } from "@/lib/ctrader/session";
 import { probeFpMarketsLiveData } from "@/lib/ctrader/market-probe";
 import { getFpMarketsCandles } from "@/lib/ctrader/candles";
-import { getAdminServices, isAllowlistedAdmin } from "@/lib/firebase-admin";
+import { isAllowlistedAdmin, verifyToken } from "@/lib/server/auth";
+import { getBrokerCredentials } from "@/lib/server/store";
 import { decryptExnessCredentials } from "@/lib/exness/vault";
 import { getExnessCandles, getExnessLiveTick } from "@/lib/exness/market-data";
 import type { ExnessCredentials } from "@/lib/exness/client";
@@ -62,16 +63,15 @@ export async function GET(request: NextRequest) {
     try {
       const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
       if (!token) return NextResponse.json({ status: "unavailable", provider, error: "Sign in to use your connected Exness account." }, { status: 401, headers: { "Cache-Control": "no-store" } });
-      const { adminAuth, adminDb } = getAdminServices();
-      const user = await adminAuth.verifyIdToken(token, true);
+      const user = await verifyToken(token);
       let credentials: ExnessCredentials;
       // Admin-only test credentials override the per-user vault only for allowlisted admins.
       if (isExnessTestModeEnabled() && isAllowlistedAdmin(user.email)) {
         credentials = getExnessTestCredentials();
       } else {
-        const snap = await adminDb.collection("users").doc(user.uid).collection("brokerConnections").doc("exness").get();
-        if (!snap.exists || !snap.data()?.encryptedCredentials) return NextResponse.json({ status: "unavailable", provider, error: "No Exness account is connected to this user." }, { status: 401, headers: { "Cache-Control": "no-store" } });
-        credentials = decryptExnessCredentials(String(snap.data()!.encryptedCredentials));
+        const encrypted = await getBrokerCredentials(user.uid, "exness");
+        if (!encrypted) return NextResponse.json({ status: "unavailable", provider, error: "No Exness account is connected to this user." }, { status: 401, headers: { "Cache-Control": "no-store" } });
+        credentials = decryptExnessCredentials(encrypted);
       }
       // Historical candles must not depend on the live WebSocket being open.
       // For the compact toolbar quote, the requested M1 window can be empty

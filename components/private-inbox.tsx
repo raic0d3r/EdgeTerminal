@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { ArrowLeft, LockKeyhole, MessageCircle, NotebookPen, Send, ShieldCheck } from "lucide-react";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/auth-client";
 
 type Mode = "notes" | "support" | "admin";
 type Message = { id:number; userUid:string; senderUid:string; senderRole:"user"|"admin"; body:string; createdAt:string };

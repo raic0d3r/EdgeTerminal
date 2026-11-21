@@ -1,3 +1,5 @@
+> **Backend note:** authentication and all data now live in PostgreSQL (Firebase was removed). Setup: [`docs/POSTGRES-MIGRATION.md`](docs/POSTGRES-MIGRATION.md).
+
 # Edge Terminal — integration-ready starter
 
 Responsive Next.js dashboard starter for a metals trading analytics product.
@@ -128,15 +130,15 @@ The sidebar's VIP Area expands to show VIP Lounge and Important VIP. Groups expa
 
 ## Private Notes and Support Inbox
 
-- **Message yourself / Private Notes** are saved in browser local storage under the signed-in Firebase UID. They are not sent to the server or shared with other members. They are local to that browser/device and are not encrypted against someone with access to the same browser profile.
-- **Support** creates a private one-to-one thread. The server verifies the Firebase ID token and derives the member's UID from the token; a member cannot choose another user's thread. Only that member and allowlisted administrators can read the thread.
+- **Message yourself / Private Notes** are saved in browser local storage under the signed-in user id. They are not sent to the server or shared with other members. They are local to that browser/device and are not encrypted against someone with access to the same browser profile.
+- **Support** creates a private one-to-one thread. The server verifies the session token and derives the member's UID from the token; a member cannot choose another user's thread. Only that member and allowlisted administrators can read the thread.
 - **Support Inbox** is shown to admins and lets them reply to each member's private ticket. Configure `ADMIN_EMAILS` as a server-only comma-separated list of administrator emails. The dashboard obtains admin-link visibility from the authenticated `/api/feature-access` response; do not create a `NEXT_PUBLIC_ADMIN_EMAILS` variable.
 - Support messages are stored in `data/edge-terminal.sqlite` on the application server. This is suitable for a single local server; production deployments with multiple instances/serverless hosting should use a shared durable database and equivalent row-level authorization. Back up the database and protect server access.
-- The support API requires Firebase Admin credentials via `FIREBASE_SERVICE_ACCOUNT_KEY` or `GOOGLE_APPLICATION_CREDENTIALS`. Never expose service-account keys in client code or public environment variables.
+- Support messages are stored in PostgreSQL (`support_messages`). Set `DATABASE_URL` in the server environment only; never expose it in client code or `NEXT_PUBLIC_*` variables. See `docs/POSTGRES-MIGRATION.md`.
 
 ## VIP community rooms
 
-The sidebar VIP Area contains VIP Lounge and Important VIP for accounts whose Firestore `users/{uid}` profile has `role: "vip"`, `access.vipLounge: true`, or `access.importantVip: true`. Administrators configured through `ADMIN_EMAILS` are also allowed. The `/api/chat` endpoint checks this permission on every read and send; hiding the links in the UI is not the security boundary. Grant/revoke VIP membership using the admin user management panel and verify with a normal member account before deployment.
+The sidebar VIP Area contains VIP Lounge and Important VIP for accounts whose `users` row has `role = 'vip'`, `access_vip_lounge = true`, or `access_important_vip = true`. Administrators configured through `ADMIN_EMAILS` are also allowed. The `/api/chat` endpoint checks this permission on every read and send; hiding the links in the UI is not the security boundary. Grant/revoke VIP membership using the admin user management panel and verify with a normal member account before deployment.
 
 
 ## Institutional Liquidity Heatmap
@@ -148,7 +150,7 @@ See `CTRADER-UID-SESSION-MIGRATION.md` for the OAuth/session migration, required
 
 ## Market Intelligence — historical analysis milestone
 
-The Market Intelligence module is available in the dashboard feature list. It reuses the authenticated `GET /api/market` broker data route for cTrader and Exness candles (XAU/USD and XAG/USD); the new analysis route forwards the existing Firebase bearer token and cTrader session cookie rather than creating another broker connection.
+The Market Intelligence module is available in the dashboard feature list. It reuses the authenticated `GET /api/market` broker data route for cTrader and Exness candles (XAU/USD and XAG/USD); the new analysis route forwards the existing session bearer token and cTrader session cookie rather than creating another broker connection.
 
 The analysis engine currently includes:
 - Five-candle OHLC-shape similarity search over available historical bars.

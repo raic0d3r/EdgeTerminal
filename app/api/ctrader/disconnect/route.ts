@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import {
   deleteCTraderSession,
-  requireFirebaseUid,
+  requireUid,
 } from "@/lib/ctrader/session";
 
 import { enforceIpRateLimit } from "@/lib/server/rate-limit";
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
   if (limited) return limited;
 
-  const uid = await requireFirebaseUid(request);
+  const uid = await requireUid(request);
 
   if (!uid) {
     return NextResponse.json(

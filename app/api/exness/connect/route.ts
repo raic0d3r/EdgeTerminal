@@ -1,6 +1,7 @@
 import { enforceSameOrigin, readJsonBody } from "@/lib/server/request-security";
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminServices } from "@/lib/firebase-admin";
+import { verifyToken } from "@/lib/server/auth";
+import { saveBrokerConnection } from "@/lib/server/store";
 import { verifyExnessConnection, type ExnessCredentials } from "@/lib/exness/client";
 import { encryptExnessCredentials } from "@/lib/exness/vault";
 import { enforceIpRateLimit } from "@/lib/server/rate-limit";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 async function currentUser(request: NextRequest) {
   const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token) throw new Error("Sign in to connect a broker.");
-  const { adminAuth } = getAdminServices(); return adminAuth.verifyIdToken(token, true);
+  return verifyToken(token);
 }
 export async function POST(request: NextRequest) {
   const limited = await enforceIpRateLimit(request, "exness-connect", 5, 600);
@@ -32,18 +33,15 @@ export async function POST(request: NextRequest) {
     const credentials: ExnessCredentials = { apiKey, privateKey, accountId, gatewayUrl };
     const verified = await verifyExnessConnection(credentials);
     credentials.accessPoint = verified.accessPoint;
-    const { adminDb } = getAdminServices();
-    await adminDb.collection("users").doc(user.uid).collection("brokerConnections").doc("exness").set({
+    await saveBrokerConnection(user.uid, "exness", {
       encryptedCredentials: encryptExnessCredentials(credentials),
       accountId: credentials.accountId,
       accessPoint: verified.accessPoint,
-      connected: true,
       accountSummary: {
         currency: String(verified.account.currency || ""),
         balance: String(verified.account.balance || ""),
         leverage: String(verified.account.leverage || ""),
       },
-      updatedAt: new Date().toISOString(),
     });
     return NextResponse.json({ connected: true, provider: "exness", accountId: credentials.accountId, account: { currency: String(verified.account.currency || ""), balance: String(verified.account.balance || ""), leverage: String(verified.account.leverage || "") }, message: "Exness account verified and securely connected." }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
@@ -51,7 +49,7 @@ export async function POST(request: NextRequest) {
     const code = typeof error === "object" && error !== null && "code" in error
       ? String((error as { code?: unknown }).code)
       : "";
-    const status = /sign in/i.test(message) || code.startsWith("auth/") ? 401 : /FIREBASE_SERVICE|encryption key/i.test(message) ? 503 : 502;
+    const status = /sign in/i.test(message) || code.startsWith("auth/") ? 401 : /DATABASE_URL|encryption key/i.test(message) ? 503 : 502;
     console.error("Exness connection failed", { status, code: code.slice(0, 40) });
     return NextResponse.json({ connected: false, provider: "exness", error: status === 401 ? "Authentication required." : status === 503 ? "Broker connection is temporarily unavailable." : "Could not verify the Exness connection. Check the credentials and try again." }, { status, headers: { "Cache-Control": "no-store" } });
   }

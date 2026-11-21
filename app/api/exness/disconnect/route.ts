@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminServices } from "@/lib/firebase-admin";
+import { verifyToken } from "@/lib/server/auth";
+import { deleteBrokerConnection } from "@/lib/server/store";
 import { enforceIpRateLimit } from "@/lib/server/rate-limit";
 export const runtime = "nodejs";
 export async function DELETE(request: NextRequest) {
@@ -8,8 +9,8 @@ export async function DELETE(request: NextRequest) {
   try {
     const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
     if (!token) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
-    const { adminAuth, adminDb } = getAdminServices(); const user = await adminAuth.verifyIdToken(token, true);
-    await adminDb.collection("users").doc(user.uid).collection("brokerConnections").doc("exness").delete();
+    const user = await verifyToken(token);
+    await deleteBrokerConnection(user.uid, "exness");
     return NextResponse.json({ disconnected: true });
   } catch { return NextResponse.json({ error: "Could not disconnect Exness." }, { status: 500 }); }
 }

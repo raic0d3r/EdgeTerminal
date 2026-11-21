@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getActiveMarketBroker, type MarketBroker } from "@/lib/market-selection";
-import { getIdToken } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { getIdToken } from "@/lib/auth-client";
+import { auth } from "@/lib/auth-client";
 
 type Props = { symbol: "XAU/USD" | "XAG/USD" | "BTC/USD"; entry: string; stop: string; capital: string; risk: string; lots: number };
 type Tab = "ticket" | "positions" | "history";
@@ -73,7 +73,7 @@ export default function LiveTradingPanel({ symbol, entry, stop, capital, risk, l
       try {
         const endpoint = broker === "exness" ? "/api/exness/status" : "/api/ctrader/status";
         const headers: Record<string, string> = {};
-        // Both broker connections are scoped to the signed-in Firebase user.
+        // Both broker connections are scoped to the signed-in user.
         if (!auth?.currentUser) throw new Error("Sign in to verify your broker connection.");
         headers.Authorization = `Bearer ${await getIdToken(auth.currentUser)}`;
         const response = await fetch(endpoint, { headers, cache: "no-store" });

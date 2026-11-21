@@ -1,11 +1,12 @@
 import {NextRequest,NextResponse} from "next/server";
-import {getAdminServices} from "@/lib/firebase-admin";
+import {verifyToken} from "@/lib/server/auth";
+import {getBrokerCredentials} from "@/lib/server/store";
 import {decryptExnessCredentials} from "@/lib/exness/vault";
 import {exnessGet,exnessRequest,newExnessIdempotencyKey} from "@/lib/exness/client";
 import {enforceSameOrigin,readJsonBody} from "@/lib/server/request-security";
 import {enforceIpRateLimit} from "@/lib/server/rate-limit";
 export const runtime="nodejs";export const dynamic="force-dynamic";
-async function credentials(req:NextRequest){const token=(req.headers.get("authorization")||"").replace(/^Bearer\s+/i,"");if(!token)throw new Error("AUTH");const {adminAuth,adminDb}=getAdminServices();const user=await adminAuth.verifyIdToken(token,true);const snap=await adminDb.collection("users").doc(user.uid).collection("brokerConnections").doc("exness").get();if(!snap.exists||!snap.data()?.encryptedCredentials)throw new Error("NOT_CONNECTED");const c=decryptExnessCredentials(String(snap.data()!.encryptedCredentials));return c;}
+async function credentials(req:NextRequest){const token=(req.headers.get("authorization")||"").replace(/^Bearer\s+/i,"");if(!token)throw new Error("AUTH");const user=await verifyToken(token);const encrypted=await getBrokerCredentials(user.uid,"exness");if(!encrypted)throw new Error("NOT_CONNECTED");const c=decryptExnessCredentials(encrypted);return c;}
 export async function GET(req:NextRequest){const limited=await enforceIpRateLimit(req,"exness-trading-read",30,60);if(limited)return limited;try{const c=await credentials(req);const kind=req.nextUrl.searchParams.get("kind");let path:string;
     if(kind==="history"){
       // Exness requires `from` unless a cursor is supplied. Default to a

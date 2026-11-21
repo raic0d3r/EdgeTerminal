@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Reuse the authenticated broker market-data route. Forward the user's
-    // existing Firebase bearer token and cTrader session cookie unchanged.
+    // existing session bearer token and cTrader session cookie unchanged.
     const headers = new Headers();
     const authorization = request.headers.get("authorization");
     const cookie = request.headers.get("cookie");

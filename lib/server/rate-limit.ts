@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { query } from "@/lib/server/db";
 
 type RateLimitOptions = {
   key: string;
@@ -48,11 +49,29 @@ export async function enforceRateLimit({
   }
 
   if (!url || !token) {
-    if (process.env.NODE_ENV === "production") {
+    // No Upstash Redis configured: use PostgreSQL (table `rate_limits`) so the limiter works on a plain VPS.
+    try {
+      const result = await query<{ count: number; ttl: number }>(
+        `INSERT INTO rate_limits (key, count, reset_at) VALUES ($1, 1, now() + ($2 * interval '1 second'))
+         ON CONFLICT (key) DO UPDATE SET
+           count    = CASE WHEN rate_limits.reset_at <= now() THEN 1 ELSE rate_limits.count + 1 END,
+           reset_at = CASE WHEN rate_limits.reset_at <= now() THEN now() + ($2 * interval '1 second') ELSE rate_limits.reset_at END
+         RETURNING count, GREATEST(1, CEIL(EXTRACT(EPOCH FROM (reset_at - now()))))::int AS ttl`,
+        [`edge-terminal:rate:${key}`, windowSeconds],
+      );
+      if (Math.random() < 0.02) void query("DELETE FROM rate_limits WHERE reset_at < now()").catch(() => undefined);
+      const row = result.rows[0];
+      if (row.count > limit) {
+        return NextResponse.json(
+          { error: "Too many requests. Please try again later." },
+          { status: 429, headers: { "Retry-After": String(row.ttl), "Cache-Control": "no-store" } }
+        );
+      }
+      return null;
+    } catch (error) {
+      console.error("PostgreSQL rate limiter unavailable:", error);
       return unavailableResponse();
     }
-
-    return null;
   }
 
   try {

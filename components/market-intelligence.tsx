@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/auth-client";
 import type { MarketForecast } from "@/lib/market-intelligence/engine";
 import { Activity, AlertTriangle, Clock3, RefreshCw, ShieldCheck, Target, Waves } from "lucide-react";
 

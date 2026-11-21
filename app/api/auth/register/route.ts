@@ -1,24 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import { randomUUID } from "node:crypto";
-import { query } from "@/lib/db/postgres";
-import { createSession, hashPassword, isAdminEmail } from "@/lib/auth-postgres";
+import { AuthError, PASSWORD_MAX, PASSWORD_MIN, createSession, normalizeEmail, registerUser } from "@/lib/server/auth";
+import { enforceIpRateLimit } from "@/lib/server/rate-limit";
+import { enforceSameOrigin, readJsonBody } from "@/lib/server/request-security";
+
 export const runtime = "nodejs";
-export async function POST(req: NextRequest) {
+export const dynamic = "force-dynamic";
+const NO_STORE = { "Cache-Control": "no-store" };
+
+export async function POST(request: NextRequest) {
+  const originFailure = enforceSameOrigin(request);
+  if (originFailure) return originFailure;
+  const limited = await enforceIpRateLimit(request, "auth-register", 10, 3600);
+  if (limited) return limited;
+
+  const parsed = await readJsonBody<{ email?: unknown; password?: unknown; displayName?: unknown }>(request, 4 * 1024);
+  if (!parsed.ok) return parsed.response;
+
+  const email = normalizeEmail(parsed.data.email);
+  const password = typeof parsed.data.password === "string" ? parsed.data.password : "";
+  const rawName = typeof parsed.data.displayName === "string" ? parsed.data.displayName.trim() : "";
+  if (!email) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400, headers: NO_STORE });
+  if (password.length < PASSWORD_MIN || password.length > PASSWORD_MAX) {
+    return NextResponse.json({ error: `Password must be between ${PASSWORD_MIN} and ${PASSWORD_MAX} characters.` }, { status: 400, headers: NO_STORE });
+  }
+  if (rawName.length > 60) return NextResponse.json({ error: "Display name must be 60 characters or fewer." }, { status: 400, headers: NO_STORE });
+  const displayName = rawName || email.split("@")[0];
+
   try {
-    const b = await req.json();
-    const email = typeof b.email === "string" ? b.email.trim().toLowerCase() : "";
-    const name = typeof b.displayName === "string" ? b.displayName.trim() : "";
-    const password = typeof b.password === "string" ? b.password : "";
-    if (!/^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(email)) return NextResponse.json({error:"Enter a valid email."},{status:400});
-    if (!name || name.length > 60) return NextResponse.json({error:"Display name must be 1–60 characters."},{status:400});
-    if (password.length < 10 || password.length > 128) return NextResponse.json({error:"Password must be at least 10 characters."},{status:400});
-    const id = randomUUID(), hash = await hashPassword(password), role = isAdminEmail(email) ? "admin" : "user";
-    await query("INSERT INTO app_users(id,email,display_name,password_hash,role,is_active) VALUES($1,$2,$3,$4,$5,TRUE)",[id,email,name,hash,role]);
-    await createSession(id);
-    return NextResponse.json({ok:true,user:{id,email,displayName:name,role}},{status:201});
-  } catch(e) {
-    if (e && typeof e === "object" && "code" in e && e.code === "23505") return NextResponse.json({error:"An account with this email already exists."},{status:409});
-    console.error("Register failed",e);
-    return NextResponse.json({error:"Registration failed. Check PostgreSQL connection and migration."},{status:500});
+    // Registration can never grant privileged access: role/VIP flags always use the database defaults.
+    const user = await registerUser({ email, password, displayName });
+    const token = await createSession(user.uid, request.headers.get("user-agent"));
+    return NextResponse.json({ token, user }, { status: 201, headers: NO_STORE });
+  } catch (error) {
+    if (error instanceof AuthError && error.code === "auth/email-already-in-use") {
+      return NextResponse.json({ error: error.message }, { status: 409, headers: NO_STORE });
+    }
+    console.error("Registration failed:", error);
+    return NextResponse.json({ error: "Could not create the account. Please try again." }, { status: 500, headers: NO_STORE });
   }
 }

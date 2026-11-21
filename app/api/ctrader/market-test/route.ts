@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   getCTraderConfig,
   getFreshCTraderSession,
-  requireFirebaseUid,
+  requireUid,
 } from "@/lib/ctrader/session";
 
 import { probeFpMarketsLiveData } from "@/lib/ctrader/market-probe";
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   if (limited) return limited;
 
-  const uid = await requireFirebaseUid(request);
+  const uid = await requireUid(request);
 
   if (!uid) {
     return NextResponse.json(

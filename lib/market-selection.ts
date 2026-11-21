@@ -1,5 +1,5 @@
-import { getIdToken, onAuthStateChanged, type User } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { getIdToken, onAuthStateChanged, type User } from "@/lib/auth-client";
+import { auth } from "@/lib/auth-client";
 export type MarketBroker = "ctrader" | "exness";
 
 const STORAGE_KEY = "edge-terminal-active-broker";

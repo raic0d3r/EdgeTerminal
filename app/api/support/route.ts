@@ -1,23 +1,16 @@
 import { enforceSameOrigin, readJsonBody } from "@/lib/server/request-security";
 import { NextRequest, NextResponse } from "next/server";
 import { enforceRateLimit } from "@/lib/server/rate-limit";
-import { getAdminServices, isAllowlistedAdmin } from "@/lib/firebase-admin";
-import { addSupportMessage, listAllSupportMessages, listSupportMessages } from "@/lib/support-db";
+import { isAllowlistedAdmin, requireUser } from "@/lib/server/auth";
+import { UUID_RE, addSupportMessage, getUserById, listAllSupportMessages, listSupportMessages } from "@/lib/server/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 async function identify(request: NextRequest) {
-  const authorization = request.headers.get("authorization") || "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
-  if (!token) return null;
-  try {
-    const { adminAuth } = getAdminServices();
-    const decoded = await adminAuth.verifyIdToken(token, true);
-    return { uid: decoded.uid, email: decoded.email || "", admin: isAllowlistedAdmin(decoded.email) };
-  } catch {
-    return null;
-  }
+  const user = await requireUser(request);
+  if (!user) return null;
+  return { uid: user.uid, email: user.email, admin: isAllowlistedAdmin(user.email) };
 }
 
 function serialize(row: { id:number; user_uid:string; sender_uid:string; sender_role:"user"|"admin"; body:string; created_at:string }) {
@@ -30,15 +23,15 @@ export async function GET(request: NextRequest) {
   try {
     const ticketUid = request.nextUrl.searchParams.get("ticketUid");
     if (actor.admin && request.nextUrl.searchParams.get("inbox") === "1") {
-      return NextResponse.json({ messages: listAllSupportMessages().map(serialize) }, { headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json({ messages: (await listAllSupportMessages()).map(serialize) }, { headers: { "Cache-Control": "no-store" } });
     }
     if (ticketUid) {
       if (!actor.admin && ticketUid !== actor.uid) {
         return NextResponse.json({ error: "You can only view your own support conversation." }, { status: 403 });
       }
-      return NextResponse.json({ messages: listSupportMessages(ticketUid).map(serialize) }, { headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json({ messages: (await listSupportMessages(ticketUid)).map(serialize) }, { headers: { "Cache-Control": "no-store" } });
     }
-    return NextResponse.json({ messages: listSupportMessages(actor.uid).map(serialize) }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ messages: (await listSupportMessages(actor.uid)).map(serialize) }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Support messages read failed", error);
     return NextResponse.json({ error: "Support storage is unavailable. Check server configuration." }, { status: 500 });
@@ -61,11 +54,12 @@ export async function POST(request: NextRequest) {
     if (!body || body.length > 2000) return NextResponse.json({ error: "Enter a message between 1 and 2000 characters." }, { status: 400 });
     if (actor.admin) {
       if (!requestedUid) return NextResponse.json({ error: "Choose a support conversation to reply to." }, { status: 400 });
-      const message = addSupportMessage(requestedUid, actor.uid, "admin", body);
+      if (!UUID_RE.test(requestedUid) || !(await getUserById(requestedUid))) return NextResponse.json({ error: "Support conversation not found." }, { status: 404 });
+      const message = await addSupportMessage(requestedUid, actor.uid, "admin", body);
       return NextResponse.json({ message: serialize(message) }, { status: 201 });
     }
     // The target conversation is derived from the verified user's identity, never from client input.
-    const message = addSupportMessage(actor.uid, actor.uid, "user", body);
+    const message = await addSupportMessage(actor.uid, actor.uid, "user", body);
     return NextResponse.json({ message: serialize(message) }, { status: 201 });
   } catch (error) {
     console.error("Support message write failed", error);

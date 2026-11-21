@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Activity, BookOpen, ChevronDown, CircleHelp, Download, Expand, Minus, Plus, RotateCcw, Settings, Signal, X, ZoomIn, ZoomOut } from "lucide-react";
 
 import { marketApiUrl, getActiveMarketBroker, fetchMarketData } from "@/lib/market-selection";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/lib/auth-client";
 
 import {
   buildFootprint,

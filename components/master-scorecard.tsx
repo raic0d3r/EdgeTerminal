@@ -6,8 +6,8 @@ import { appendBiasSnapshot, evaluateBiasHistory, evaluateSelectedTimeframeOutco
 import { useEffect, useMemo, useState } from "react";
 import { Activity, ArrowDownRight, ArrowUpRight, Bell, BellRing, Download, Info, RefreshCw } from "lucide-react";
 import PushNotifications from "@/components/push-notifications";
-import { auth } from "@/lib/firebase";
-import { getIdToken } from "firebase/auth";
+import { auth } from "@/lib/auth-client";
+import { getIdToken } from "@/lib/auth-client";
 
 type Candle = { time: string; open: number; high: number; low: number; close: number; volume?: number | null };
 type MarketResponse = { status?: string; error?: string; disclaimer?: string; data?: { price?: number | null; source?: string; updatedAt?: string | null; candles?: Candle[]; dataNote?: string; sourceCandleInterval?: string } };

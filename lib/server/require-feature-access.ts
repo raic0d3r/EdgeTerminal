@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminServices, isAllowlistedAdmin } from "@/lib/firebase-admin";
+import { getBearerToken, isAllowlistedAdmin, verifyToken } from "@/lib/server/auth";
+import { getSetting } from "@/lib/server/store";
 import { defaultFeatureRules, normalizeFeatureRules } from "@/lib/feature-access";
 
 export type SubscriptionPlan = "member" | "vip" | "admin";
@@ -13,26 +14,18 @@ export async function requireFeatureAccess(
   request: NextRequest,
   featureTitle: string,
 ): Promise<AccessResult> {
-  const authorization = request.headers.get("authorization") || "";
-  const token = authorization.startsWith("Bearer ")
-    ? authorization.slice("Bearer ".length).trim()
-    : "";
+  const token = getBearerToken(request);
 
   if (!token) {
     return { allowed: false, response: NextResponse.json({ error: "Authentication required." }, { status: 401 }) };
   }
 
   try {
-    const { adminAuth, adminDb } = getAdminServices();
-    const decoded = await adminAuth.verifyIdToken(token, true);
+    const decoded = await verifyToken(token);
     const isAdmin = isAllowlistedAdmin(decoded.email);
 
-    const [profileSnapshot, settingsSnapshot] = await Promise.all([
-      adminDb.collection("users").doc(decoded.uid).get(),
-      adminDb.collection("platformSettings").doc("featureAccess").get(),
-    ]);
-
-    const profile = profileSnapshot.data() || {};
+    const settings = await getSetting<{ rules?: unknown }>("featureAccess");
+    const profile = { status: decoded.status, role: decoded.role, plan: undefined as string | undefined };
     const accountStatus = String(profile.status || "active").toLowerCase();
     if (!isAdmin && ["disabled", "suspended", "banned", "deleted"].includes(accountStatus)) {
       return { allowed: false, response: NextResponse.json({ error: "Account is not active." }, { status: 403 }) };
@@ -41,7 +34,7 @@ export async function requireFeatureAccess(
     const rawPlan = String(profile.role || profile.plan || "member").toLowerCase();
     const plan: SubscriptionPlan = isAdmin ? "admin" : rawPlan === "vip" || rawPlan === "pro" ? "vip" : "member";
 
-    const configuredRules = settingsSnapshot.exists ? settingsSnapshot.data()?.rules : undefined;
+    const configuredRules = settings?.rules;
     const rules = normalizeFeatureRules(configuredRules ?? defaultFeatureRules());
     const rule = rules.find((item) => item.title === featureTitle);
 
@@ -61,7 +54,7 @@ export async function requireFeatureAccess(
 
     return { allowed: true, uid: decoded.uid, plan, isAdmin };
   } catch (error) {
-    // Do not fail open when token verification or Firebase Admin access fails.
+    // Do not fail open when token verification or database access fails.
     console.error("Feature authorization failed:", error);
     return { allowed: false, response: NextResponse.json({ error: "Unable to verify feature permissions." }, { status: 503 }) };
   }

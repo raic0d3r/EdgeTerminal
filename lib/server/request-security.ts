@@ -1,20 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
 
-/** Reject cross-origin browser mutations. Bearer-token authentication remains mandatory separately. */
+/** Reject cross-origin browser mutations, respecting the trusted Nginx proxy. */
 export function enforceSameOrigin(request: NextRequest): NextResponse | null {
   const origin = request.headers.get("origin");
-  if (!origin) return null; // Non-browser clients may omit Origin; auth still applies.
+  if (!origin) return null;
+
   try {
     const parsed = new URL(origin);
-    if (parsed.origin !== request.nextUrl.origin) {
-      return NextResponse.json({ error: "Cross-origin request rejected." }, {
-        status: 403,
-        headers: { "Cache-Control": "no-store", "Vary": "Origin" },
-      });
+
+    const forwardedProto = request.headers
+      .get("x-forwarded-proto")
+      ?.split(",")[0]
+      .trim();
+
+    const forwardedHost =
+      request.headers.get("x-forwarded-host") ||
+      request.headers.get("host");
+
+    if (
+      !forwardedHost ||
+      !["https", "http"].includes(forwardedProto || "")
+    ) {
+      throw new Error("Missing trusted proxy origin");
+    }
+
+    const expectedOrigin = `${forwardedProto}://${forwardedHost}`;
+
+    if (parsed.origin !== new URL(expectedOrigin).origin) {
+      return NextResponse.json(
+        { error: "Cross-origin request rejected." },
+        {
+          status: 403,
+          headers: {
+            "Cache-Control": "no-store",
+            Vary: "Origin",
+          },
+        },
+      );
     }
   } catch {
-    return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
+    return NextResponse.json(
+      { error: "Invalid request origin." },
+      { status: 403 },
+    );
   }
+
   return null;
 }
 

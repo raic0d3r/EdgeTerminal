@@ -14,9 +14,9 @@ walk(api);
 const rows = files.sort().map(file => {
   const source = fs.readFileSync(file, 'utf8');
   const checks = {
-    firebaseTokenVerification: /verifyIdToken\s*\(/.test(source),
+    firebaseTokenVerification: /verifyToken\s*\(|requireUser\s*\(|requireUid\s*\(/.test(source),
     featureAuthorization: /requireFeatureAccess|require-feature-access/.test(source),
-    adminAuthorization: /requireAdmin|isAllowlistedAdmin|adminAuth/.test(source),
+    adminAuthorization: /requireAdmin|isAllowlistedAdmin/.test(source),
     rateLimiting: /enforceRateLimit|enforceIpRateLimit|rate-limit/.test(source),
     sameOrigin: /enforceSameOrigin/.test(source),
     boundedJson: /readJsonBody/.test(source),

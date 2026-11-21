@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminServices, isAllowlistedAdmin } from "@/lib/firebase-admin";
+import { isAllowlistedAdmin, verifyToken } from "@/lib/server/auth";
+import { getBrokerCredentials } from "@/lib/server/store";
 import { decryptExnessCredentials } from "@/lib/exness/vault";
 import { verifyExnessConnection } from "@/lib/exness/client";
 import { getExnessTestCredentials, isExnessTestModeEnabled } from "@/lib/exness/test-mode";
@@ -12,17 +13,16 @@ export async function GET(request: NextRequest) {
   try {
     const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
     if (!token) return NextResponse.json({ connected: false }, { status: 401 });
-    const { adminAuth, adminDb } = getAdminServices();
-    const user = await adminAuth.verifyIdToken(token, true);
+    const user = await verifyToken(token);
     // Test credentials are only available to explicitly allowlisted admins.
     if (isExnessTestModeEnabled() && isAllowlistedAdmin(user.email)) {
       const credentials = getExnessTestCredentials();
       const verified = await verifyExnessConnection(credentials);
       return NextResponse.json({ connected: true, provider: "exness", testMode: true, accountId: credentials.accountId, account: { currency: String(verified.account.currency || ""), balance: String(verified.account.balance || ""), leverage: String(verified.account.leverage || "") } }, { headers: { "Cache-Control": "no-store" } });
     }
-    const snap = await adminDb.collection("users").doc(user.uid).collection("brokerConnections").doc("exness").get();
-    if (!snap.exists || !snap.data()?.encryptedCredentials) return NextResponse.json({ connected: false, provider: "exness", testMode: false }, { headers: { "Cache-Control": "no-store" } });
-    const credentials = decryptExnessCredentials(String(snap.data()!.encryptedCredentials));
+    const encrypted = await getBrokerCredentials(user.uid, "exness");
+    if (!encrypted) return NextResponse.json({ connected: false, provider: "exness", testMode: false }, { headers: { "Cache-Control": "no-store" } });
+    const credentials = decryptExnessCredentials(encrypted);
     const verified = await verifyExnessConnection(credentials);
     return NextResponse.json({ connected: true, provider: "exness", testMode: false, accountId: credentials.accountId, account: { currency: String(verified.account.currency || ""), balance: String(verified.account.balance || ""), leverage: String(verified.account.leverage || "") } }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

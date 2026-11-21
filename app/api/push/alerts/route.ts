@@ -1,6 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireFirebaseUid } from "@/lib/ctrader/session";
-import { getAdminServices } from "@/lib/firebase-admin";
-export const runtime="nodejs";
-const ALLOWED=new Set(["XAU/USD","XAG/USD"]);
-export async function POST(request:NextRequest){ const uid=await requireFirebaseUid(request); if(!uid)return NextResponse.json({error:"Authentication required"},{status:401}); try{ const body=await request.json(); const asset=String(body?.asset||""); if(!ALLOWED.has(asset))return NextResponse.json({error:"Unsupported instrument"},{status:400}); const {adminDb}=getAdminServices(); const ref=adminDb.collection("users").doc(uid).collection("priceAlerts").doc(asset.replace("/","-")); if(body.alert===null){await ref.delete();return NextResponse.json({ok:true,armed:false});} const a=body.alert; if(a?.asset!==asset || !Array.isArray(a.levels)||a.levels.length>10 || !a.levels.every((x:any)=>typeof x.name==="string"&&Number.isFinite(x.price)&&["support","resistance"].includes(x.kind)))return NextResponse.json({error:"Invalid alert configuration"},{status:400}); await ref.set({asset,mode:a.mode==="scalp"?"scalp":"swing",levels:a.levels.map((x:any)=>({name:x.name.slice(0,40),price:Number(x.price),kind:x.kind})),armedAt:Number(a.armedAt)||Date.now(),triggered:Array.isArray(a.triggered)?a.triggered.filter((x:any)=>typeof x==="string").slice(0,10):[],provider:String(body.provider||"user-session"),updatedAt:Date.now()}); return NextResponse.json({ok:true,armed:true});}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Could not save alert"},{status:500});}}
+import { requireUid } from "@/lib/server/auth";
+import { deletePriceAlert, savePriceAlert } from "@/lib/server/store";
+export const runtime = "nodejs";
+const ALLOWED = new Set(["XAU/USD", "XAG/USD"]);
+
+export async function POST(request: NextRequest) {
+  const uid = await requireUid(request);
+  if (!uid) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  try {
+    const body = await request.json();
+    const asset = String(body?.asset || "");
+    if (!ALLOWED.has(asset)) return NextResponse.json({ error: "Unsupported instrument" }, { status: 400 });
+    if (body.alert === null) { await deletePriceAlert(uid, asset); return NextResponse.json({ ok: true, armed: false }); }
+    const a = body.alert;
+    if (a?.asset !== asset || !Array.isArray(a.levels) || a.levels.length > 10
+      || !a.levels.every((x: any) => typeof x.name === "string" && Number.isFinite(x.price) && ["support", "resistance"].includes(x.kind))) {
+      return NextResponse.json({ error: "Invalid alert configuration" }, { status: 400 });
+    }
+    await savePriceAlert(uid, asset, {
+      asset,
+      mode: a.mode === "scalp" ? "scalp" : "swing",
+      levels: a.levels.map((x: any) => ({ name: x.name.slice(0, 40), price: Number(x.price), kind: x.kind })),
+      armedAt: Number(a.armedAt) || Date.now(),
+      triggered: Array.isArray(a.triggered) ? a.triggered.filter((x: any) => typeof x === "string").slice(0, 10) : [],
+      provider: String(body.provider || "user-session"),
+      updatedAt: Date.now(),
+    });
+    return NextResponse.json({ ok: true, armed: true });
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Could not save alert" }, { status: 500 });
+  }
+}

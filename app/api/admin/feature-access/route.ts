@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { FieldValue } from "firebase-admin/firestore";
-import { getAdminServices, isAllowlistedAdmin } from "@/lib/firebase-admin";
+import { isAllowlistedAdmin, requireUser } from "@/lib/server/auth";
+import { getSetting, setSetting } from "@/lib/server/store";
 
 import {
   defaultFeatureRules,
@@ -12,14 +12,8 @@ import { enforceIpRateLimit } from "@/lib/server/rate-limit";
 export const runtime = "nodejs";
 
 async function requireAdmin(request: NextRequest) {
-  const authorization = request.headers.get("authorization") || "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
-  if (!token) return null;
-  try {
-    const { adminAuth } = getAdminServices();
-    const decoded = await adminAuth.verifyIdToken(token, true);
-    return isAllowlistedAdmin(decoded.email) ? decoded : null;
-  } catch { return null; }
+  const user = await requireUser(request);
+  return user && isAllowlistedAdmin(user.email) ? user : null;
 }
 
 export async function GET(request: NextRequest) {
@@ -27,9 +21,8 @@ export async function GET(request: NextRequest) {
   if (limited) return limited;
   if (!await requireAdmin(request)) return NextResponse.json({ error: "Administrator access required." }, { status: 403 });
   try {
-    const { adminDb } = getAdminServices();
-    const doc = await adminDb.collection("platformSettings").doc("featureAccess").get();
-    return NextResponse.json({ rules: normalizeFeatureRules(doc.data()?.rules || defaultFeatureRules()) }, { headers: { "Cache-Control": "private, no-store" } });
+    const saved = await getSetting<{ rules?: unknown }>("featureAccess");
+    return NextResponse.json({ rules: normalizeFeatureRules(saved?.rules || defaultFeatureRules()) }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load feature access settings." }, { status: 500 });
   }
@@ -49,11 +42,10 @@ export async function PATCH(request: NextRequest) {
         return NextResponse.json({ error: `Subscription links must use HTTPS (${rule.title}).` }, { status: 400 });
       }
     }
-    const { adminDb } = getAdminServices();
-    await adminDb.collection("platformSettings").doc("featureAccess").set({ rules, updatedAt: FieldValue.serverTimestamp(), updatedBy: actor.uid }, { merge: true });
+    await setSetting("featureAccess", { rules }, actor.uid);
     return NextResponse.json({ ok: true, rules }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Feature access settings update failed", error);
-    return NextResponse.json({ error: "Could not save feature access settings. Check Firebase Admin configuration." }, { status: 500 });
+    return NextResponse.json({ error: "Could not save feature access settings. Check the PostgreSQL connection." }, { status: 500 });
   }
 }

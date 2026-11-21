@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getIdToken } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { getIdToken } from "@/lib/auth-client";
+import { auth } from "@/lib/auth-client";
 import { Search, RefreshCw, ShieldCheck, Users, LockKeyhole, CheckCircle2, XCircle, SlidersHorizontal, Save, Crown, Zap, Monitor } from "lucide-react";
 import { type FeatureRule, defaultFeatureRules } from "@/lib/feature-access";
 
@@ -180,7 +180,7 @@ export default function AdminUserManagement({ onClose }: { onClose: () => void }
             <label className="feature-link-field">Upgrade / checkout URL<input type="url" value={rule.subscriptionUrl || ""} placeholder={rule.tier === "VIP" ? "https://… VIP checkout link" : "https://… VIP checkout link"} onChange={e => changeRule(rule.title, { subscriptionUrl: e.target.value })}/><small>Leave blank to use the global link from .env.local.</small></label>
             <label className="feature-enabled-toggle"><input type="checkbox" checked={rule.enabled} onChange={e => changeRule(rule.title, { enabled: e.target.checked })}/> Enabled</label>
           </article>)}</div>
-          <div className="feature-access-footer"><span>Settings are saved to Firestore and apply to all users after refresh. Use HTTPS checkout links only.</span><button className="feature-save-button" onClick={() => void saveRules()} disabled={rulesSaving || rulesLoading}><Save size={16}/> {rulesSaving ? "Saving…" : "Save Feature Settings"}</button></div>
+          <div className="feature-access-footer"><span>Settings are saved to the database and apply to all users after refresh. Use HTTPS checkout links only.</span><button className="feature-save-button" onClick={() => void saveRules()} disabled={rulesSaving || rulesLoading}><Save size={16}/> {rulesSaving ? "Saving…" : "Save Feature Settings"}</button></div>
         </>}
       </section>}
       {tab === "chart" && <section className="feature-access-admin chart-display-admin">

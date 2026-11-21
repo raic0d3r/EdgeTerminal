@@ -1,6 +1,9 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import type { NextRequest } from "next/server";
-import { getAdminServices } from "@/lib/firebase-admin";
+import { requireUid } from "@/lib/server/auth";
+import { consumeOAuthState, getCTraderSessionBlob, insertOAuthState, removeCTraderSession, upsertCTraderSession } from "@/lib/server/store";
+
+export { requireUid };
 
 export const CTRADER_STATE_COOKIE = "edge_ctrader_oauth_state";
 export function clearCTraderCookies(response: import("next/server").NextResponse) {
@@ -42,39 +45,22 @@ function decryptSession(value?: string): CTraderTokenSession | null {
   } catch { return null; }
 }
 
-export async function requireFirebaseUid(request: NextRequest): Promise<string | null> {
-  const header = request.headers.get("authorization") || "";
-  if (!header.startsWith("Bearer ")) return null;
-  try { const { adminAuth } = getAdminServices(); return (await adminAuth.verifyIdToken(header.slice(7), true)).uid; }
-  catch { return null; }
-}
-
 export async function createOAuthTransaction(uid: string, state: string) {
-  const { adminDb } = getAdminServices();
-  const stateHash = createHash("sha256").update(state).digest("hex");
-  await adminDb.collection("ctraderOAuthStates").doc(stateHash).create({ uid, createdAt: Date.now(), expiresAt: Date.now() + 10 * 60 * 1000 });
+  await insertOAuthState(createHash("sha256").update(state).digest("hex"), uid, 10 * 60 * 1000);
 }
 export async function consumeOAuthTransaction(state: string): Promise<string | null> {
-  const { adminDb } = getAdminServices(); const ref = adminDb.collection("ctraderOAuthStates").doc(createHash("sha256").update(state).digest("hex"));
-  return adminDb.runTransaction(async tx => {
-    const snap = await tx.get(ref); if (!snap.exists) return null;
-    const data = snap.data()!; tx.delete(ref);
-    if (typeof data.uid !== "string" || Number(data.expiresAt) < Date.now()) return null;
-    return data.uid;
-  });
+  return consumeOAuthState(createHash("sha256").update(state).digest("hex"));
 }
 export async function saveCTraderSession(uid: string, session: CTraderTokenSession) {
-  const { adminDb } = getAdminServices();
-  await adminDb.collection("ctraderSessions").doc(uid).set({ encryptedSession: encryptSession(session), expiresAt: session.expiresAt, updatedAt: Date.now(), provider: "ctrader" });
+  await upsertCTraderSession(uid, encryptSession(session), session.expiresAt);
 }
 export async function deleteCTraderSession(uid: string) {
-  const { adminDb } = getAdminServices(); await adminDb.collection("ctraderSessions").doc(uid).delete();
+  await removeCTraderSession(uid);
 }
 
 export async function getFreshCTraderSession(request: NextRequest): Promise<CTraderSessionResult> {
-  const uid = await requireFirebaseUid(request); if (!uid) return { session: null, refreshed: false, uid: null };
-  const { adminDb } = getAdminServices(); const snap = await adminDb.collection("ctraderSessions").doc(uid).get();
-  const current = decryptSession(snap.data()?.encryptedSession);
+  const uid = await requireUid(request); if (!uid) return { session: null, refreshed: false, uid: null };
+  const current = decryptSession((await getCTraderSessionBlob(uid)) ?? undefined);
   if (!current) return { session: null, refreshed: false, uid };
   if (current.expiresAt > Date.now() + 5 * 60 * 1000) return { session: current, refreshed: false, uid };
   try {
