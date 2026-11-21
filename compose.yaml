@@ -1,0 +1,24 @@
+services:
+  edgeterminal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: edgeterminal-postgres:latest
+    container_name: edgeterminal
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"
+    env_file:
+      - .env.local
+    volumes:
+      - edgeterminal_data:/app/data
+    networks:
+      - edgeterminal_db_net
+
+volumes:
+  edgeterminal_data:
+    external: true
+
+networks:
+  edgeterminal_db_net:
+    external: true
