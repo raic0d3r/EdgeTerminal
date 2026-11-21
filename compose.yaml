@@ -1,0 +1,40 @@
+services:
+  edgeterminal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: edgeterminal
+    restart: unless-stopped
+    init: true
+    ports:
+      # Only the host itself can reach this port. Existing public Nginx stays on 80/443.
+      - "127.0.0.1:3001:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      MARKET_DATA_MODE: "${MARKET_DATA_MODE:-demo}"
+      ECONOMIC_DATA_MODE: "${ECONOMIC_DATA_MODE:-demo}"
+      # Add production credentials in Portainer's stack environment variables, not Git.
+      TWELVE_DATA_API_KEY: "${TWELVE_DATA_API_KEY:-}"
+      TRADING_ECONOMICS_API_KEY: "${TRADING_ECONOMICS_API_KEY:-}"
+      TRADING_ECONOMICS_API_SECRET: "${TRADING_ECONOMICS_API_SECRET:-}"
+      ADMIN_EMAILS: "${ADMIN_EMAILS:-}"
+      FIREBASE_SERVICE_ACCOUNT_KEY: "${FIREBASE_SERVICE_ACCOUNT_KEY:-}"
+      CTRADER_TOKEN_ENCRYPTION_KEY: "${CTRADER_TOKEN_ENCRYPTION_KEY:-}"
+    volumes:
+      - edgeterminal_data:/app/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+volumes:
+  edgeterminal_data:
+    name: edgeterminal_data
